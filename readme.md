@@ -113,8 +113,8 @@ a block is a list of parameters wrapped between a pair of `{ }`,
 
 parameters can be labeled. Labelling a parameter allows for multiple
 parameters to be grouped together. For example, assume your application allows
-authenticating against multiple authentication backends, then you may want
-them to group them by the backend,
+authenticating against multiple backends, you may want to group each
+configuration block by the backend,
 
     auth ldap {
         addr "ldap://example.com"
