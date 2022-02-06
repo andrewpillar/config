@@ -11,7 +11,7 @@ import (
 
 var (
 	sizb  int64 = 1
-	sizkb int64 = sizb  << 10
+	sizkb int64 = sizb << 10
 	sizmb int64 = sizkb << 10
 	sizgb int64 = sizmb << 10
 	siztb int64 = sizgb << 10
@@ -103,7 +103,7 @@ func litValue(rt reflect.Type, lit *Lit) (reflect.Value, error) {
 			return rv, lit.Err("cannot use duration as " + kind.String())
 		}
 
-		end := len(lit.Value)-1
+		end := len(lit.Value) - 1
 
 		dur, ok := durtab[lit.Value[end]]
 
@@ -119,7 +119,7 @@ func litValue(rt reflect.Type, lit *Lit) (reflect.Value, error) {
 			return rv, lit.Err("cannot use duration as " + kind.String())
 		}
 
-		end := len(lit.Value)-1
+		end := len(lit.Value) - 1
 
 		var unit string
 

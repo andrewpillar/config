@@ -213,7 +213,7 @@ func Test_Parser(t *testing.T) {
 			},
 		},
 		&Param{
-			Name: &Name{Value: "store"},
+			Name:  &Name{Value: "store"},
 			Label: &Name{Value: "files"},
 			Value: &Block{
 				Params: []*Param{

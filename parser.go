@@ -133,7 +133,19 @@ func (p *parser) operand() Node {
 	case _Lbrack:
 		n = p.arr()
 	case _Name:
-		n = p.name()
+		name := p.name()
+
+		if name.Value != "true" && name.Value != "false" {
+			p.unexpected(_Name)
+			p.advance(_Semi)
+			break
+		}
+
+		n = &Lit{
+			node:  name.node,
+			Type:  BoolLit,
+			Value: name.Value,
+		}
 	default:
 		p.unexpected(p.tok)
 		p.advance(_Semi)
@@ -177,6 +189,14 @@ func (p *parser) param() *Param {
 		param.Label = p.name()
 
 		if p.tok == _Semi {
+			if param.Label.Value == "true" || param.Label.Value == "false" {
+				param.Value = &Lit{
+					node:  param.Label.node,
+					Type:  BoolLit,
+					Value: param.Label.Value,
+				}
+				param.Label = nil
+			}
 			return param
 		}
 	}
@@ -194,24 +214,7 @@ func (p *parser) parse() ([]Node, error) {
 			p.next()
 			continue
 		}
-
-		param := p.param()
-
-		if param != nil {
-			// Rewrite valueless labeled parameter to a bool literal if it is a
-			// bool.
-			if param.Label != nil && param.Value == nil {
-				if param.Label.Value == "true" || param.Label.Value == "false" {
-					param.Value = &Lit{
-						node: param.Label.node,
-						Type: BoolLit,
-						Value: param.Label.Value,
-					}
-					param.Label = nil
-				}
-			}
-		}
-		nn = append(nn, param)
+		nn = append(nn, p.param())
 	}
 
 	if p.errc > 0 {
