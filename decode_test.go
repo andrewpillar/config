@@ -59,8 +59,8 @@ func Test_DecodeArrays(t *testing.T) {
 	Ints := []int64{1, 2, 3, 4}
 	Floats := []float64{1.2, 3.4, 5.6, 7.8}
 	Bools := []bool{true, false}
-	Durations := []time.Duration{time.Second, time.Minute*2, time.Hour*3, time.Hour*4*24}
-	Sizes := []int64{1, 2048,  3145728, 4294967296, 5497558138880}
+	Durations := []time.Duration{time.Second, time.Minute * 2, time.Hour * 3, time.Hour * 4 * 24}
+	Sizes := []int64{1, 2048, 3145728, 4294967296, 5497558138880}
 
 	for i, str := range Strings {
 		if cfg.Strings[i] != str {
@@ -119,15 +119,15 @@ func Test_DecodeLabel(t *testing.T) {
 	}
 
 	expected := map[string]Auth{
-		"internal": Auth{
+		"internal": {
 			Addr: "postgres://localhost:5432",
 			TLS:  TLS{},
 		},
-		"ldap": Auth{
+		"ldap": {
 			Addr: "ldap://example.com",
 			TLS:  TLS{CA: "/var/lib/ssl/ca.crt"},
 		},
-		"saml": Auth{
+		"saml": {
 			Addr: "https://idp.example.com",
 			TLS:  TLS{CA: "/var/lib/ssl/ca.crt"},
 		},
