@@ -281,7 +281,9 @@ func (d *decoder) decode(rv reflect.Value, p *Param) error {
 		t := f.val.Type()
 		el = t.Elem()
 
-		f.val.Set(reflect.MakeMap(t))
+		if f.val.IsNil() {
+			f.val.Set(reflect.MakeMap(t))
+		}
 	}
 
 	var (
