@@ -14,9 +14,6 @@ var (
 	sizmb int64 = sizkb << 10
 	sizgb int64 = sizmb << 10
 	siztb int64 = sizgb << 10
-	sizpb int64 = siztb << 10
-	sizeb int64 = sizpb << 10
-	sizzb int64 = sizeb << 10
 
 	siztab = map[string]int64{
 		"B":  sizb,
@@ -24,9 +21,6 @@ var (
 		"MB": sizmb,
 		"GB": sizgb,
 		"TB": siztb,
-		"PB": sizpb,
-		"EB": sizeb,
-		"ZB": sizzb,
 	}
 
 	durtab = map[byte]time.Duration{
@@ -119,22 +113,25 @@ func litValue(rt reflect.Type, lit *Lit) (reflect.Value, error) {
 		}
 
 		end := len(lit.Value) - 1
+		val := lit.Value[:end]
 
-		var unit string
+		unitBytes := make([]byte, 1)
+		unitBytes[0] = lit.Value[end]
 
-		if b := lit.Value[end-1]; b == 'K' || b == 'M' || b == 'G' || b == 'T' || b == 'P' || b == 'E' || b == 'Z' {
-			unit = string(b)
+		if b := lit.Value[end-1]; b == 'K' || b == 'M' || b == 'G' || b == 'T' {
+			val = lit.Value[:len(val)-1]
+
+			unitBytes = append([]byte{b}, unitBytes[0])
 		}
 
-		unit += string(lit.Value[end])
-
+		unit := string(unitBytes)
 		siz, ok := siztab[unit]
 
 		if !ok {
-			return rv, lit.Err("unrecognized size")
+			return rv, lit.Err("unrecognized size " + unit)
 		}
 
-		i, _ := strconv.ParseInt(lit.Value[:end-len(unit)], 10, 64)
+		i, _ := strconv.ParseInt(val, 10, 64)
 
 		rv = reflect.ValueOf(i * siz)
 	}
