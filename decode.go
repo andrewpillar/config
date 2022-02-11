@@ -5,7 +5,6 @@ import (
 	"os"
 	"reflect"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -142,7 +141,7 @@ func litValue(rt reflect.Type, lit *Lit) (reflect.Value, error) {
 	return rv, nil
 }
 
-func blockValue(rt reflect.Type, block *Block) (reflect.Value, error) {
+func (d *decoder) decodeBlock(rt reflect.Type, block *Block) (reflect.Value, error) {
 	var rv reflect.Value
 
 	if kind := rt.Kind(); kind != reflect.Struct {
@@ -152,14 +151,14 @@ func blockValue(rt reflect.Type, block *Block) (reflect.Value, error) {
 	rv = reflect.New(rt).Elem()
 
 	for _, p := range block.Params {
-		if err := decodeParam(rv, p); err != nil {
+		if err := d.decode(rv, p); err != nil {
 			return rv, err
 		}
 	}
 	return rv, nil
 }
 
-func arrayValue(rt reflect.Type, arr *Array) (reflect.Value, error) {
+func (d *decoder) decodeArray(rt reflect.Type, arr *Array) (reflect.Value, error) {
 	var rv reflect.Value
 
 	if kind := rt.Kind(); kind != reflect.Slice {
@@ -182,14 +181,14 @@ func arrayValue(rt reflect.Type, arr *Array) (reflect.Value, error) {
 			}
 			val.Set(litrv.Convert(el))
 		case *Block:
-			blockrv, err := blockValue(el, v)
+			blockrv, err := d.decodeBlock(el, v)
 
 			if err != nil {
 				return rv, err
 			}
 			val.Set(blockrv)
 		case *Array:
-			arrrv, err := arrayValue(el, v)
+			arrrv, err := d.decodeArray(el, v)
 
 			if err != nil {
 				return rv, err
@@ -201,57 +200,91 @@ func arrayValue(rt reflect.Type, arr *Array) (reflect.Value, error) {
 	return rv, nil
 }
 
-func getField(rv reflect.Value, name string) (reflect.Value, bool) {
-	t := rv.Type()
+type field struct {
+	name string
+	val  reflect.Value
+	fold func(s, t []byte) bool
+}
 
-	if _, ok := t.FieldByName(name); ok {
-		return rv.FieldByName(name), true
+type fields struct {
+	arr []*field
+	tab map[string]int
+}
+
+func (f *fields) get(name string) (*field, bool) {
+	i, ok := f.tab[name]
+
+	if ok {
+		return f.arr[i], true
+	}
+	return nil, false
+}
+
+type decoder struct {
+	fields *fields
+}
+
+func (d *decoder) loadFields(rv reflect.Value) {
+	d.fields = &fields{
+		arr: make([]*field, 0),
+		tab: make(map[string]int),
 	}
 
-	fields := make(map[string]int)
+	t := rv.Type()
 
 	for i := 0; i < rv.NumField(); i++ {
 		sf := t.Field(i)
 
-		val, ok := sf.Tag.Lookup("config")
+		name := sf.Name
 
-		if ok {
-			parts := strings.Split(val, ",")
-			name := parts[0]
+		if tag := sf.Tag.Get("config"); tag != "" {
+			name = tag
+		}
 
-			if name == "-" {
-				continue
+		if name == "-" {
+			continue
+		}
+
+		d.fields.arr = append(d.fields.arr, &field{
+			name: name,
+			val:  rv.Field(i),
+			fold: foldFunc([]byte(name)),
+		})
+		d.fields.tab[name] = i
+	}
+}
+
+func (d *decoder) decode(rv reflect.Value, p *Param) error {
+	d.loadFields(rv)
+
+	f, ok := d.fields.get(p.Name.Value)
+
+	if !ok {
+		// Lazily search across all fields using the fold function for case
+		// comparison.
+		for _, fld := range d.fields.arr {
+			if fld.fold([]byte(fld.name), []byte(p.Name.Value)) {
+				f = fld
+				break
 			}
-			fields[name] = i
 		}
 	}
 
-	i, ok := fields[name]
-
-	if !ok {
-		return reflect.Value{}, false
-	}
-	return rv.Field(i), true
-}
-
-func decodeParam(rv reflect.Value, p *Param) error {
-	f, ok := getField(rv, p.Name.Value)
-
-	if !ok {
+	if f == nil {
 		return nil
 	}
 
-	el := f.Type()
+	el := f.val.Type()
 
 	if p.Label != nil {
-		if f.Kind() != reflect.Map {
+		if f.val.Kind() != reflect.Map {
 			return p.Err("can only decode labeled parameter into map")
 		}
 
-		t := f.Type()
+		t := f.val.Type()
 		el = t.Elem()
 
-		f.Set(reflect.MakeMap(t))
+		f.val.Set(reflect.MakeMap(t))
 	}
 
 	var (
@@ -268,9 +301,9 @@ func decodeParam(rv reflect.Value, p *Param) error {
 		}
 		pv = pv.Convert(el)
 	case *Block:
-		pv, err = blockValue(el, v)
+		pv, err = d.decodeBlock(el, v)
 	case *Array:
-		pv, err = arrayValue(el, v)
+		pv, err = d.decodeArray(el, v)
 	}
 
 	if err != nil {
@@ -278,11 +311,11 @@ func decodeParam(rv reflect.Value, p *Param) error {
 	}
 
 	if p.Label != nil {
-		f.SetMapIndex(reflect.ValueOf(p.Label.Value), pv)
+		f.val.SetMapIndex(reflect.ValueOf(p.Label.Value), pv)
 		return nil
 	}
 
-	f.Set(pv)
+	f.val.Set(pv)
 	return nil
 }
 
@@ -292,8 +325,6 @@ func Decode(v interface{}, name string, errh func(Pos, string)) error {
 	if kind := rv.Kind(); kind != reflect.Ptr || rv.IsNil() {
 		return errors.New("cannot decode into " + kind.String())
 	}
-
-	el := rv.Elem()
 
 	f, err := os.Open(name)
 
@@ -309,6 +340,10 @@ func Decode(v interface{}, name string, errh func(Pos, string)) error {
 		return err
 	}
 
+	el := rv.Elem()
+
+	var dec decoder
+
 	for _, n := range nn {
 		param, ok := n.(*Param)
 
@@ -316,7 +351,7 @@ func Decode(v interface{}, name string, errh func(Pos, string)) error {
 			panic("could not type assert to *Param")
 		}
 
-		if err := decodeParam(el, param); err != nil {
+		if err := dec.decode(el, param); err != nil {
 			return err
 		}
 	}

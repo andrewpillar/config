@@ -9,32 +9,32 @@ import (
 type Driver string
 
 type Config struct {
-	Log map[string]string `config:"log"`
+	Log map[string]string
 
 	Net struct {
-		Listen string `config:"listen"`
+		Listen string
 
 		TLS struct {
-			Cert string `config:"cert"`
-			Key  string `config:"key"`
-		} `config:"tls"`
-	} `config:"net"`
+			Cert string
+			Key  string
+		}
+	}
 
-	Drivers []Driver `config:"drivers"`
+	Drivers []Driver
 
 	Cache struct {
 		Redis struct {
-			Addr string `config:"addr"`
-		} `config:"redis"`
+			Addr string
+		}
 
 		CleanupInterval time.Duration `config:"cleanup_interval"`
-	} `config:"cache"`
+	}
 
 	Store map[string]struct {
-		Type  string `config:"type"`
-		Path  string `config:"path"`
-		Limit int64  `config:"limit"`
-	} `config:"store"`
+		Type  string
+		Path  string
+		Limit int64
+	}
 }
 
 func Test_Decode(t *testing.T) {
