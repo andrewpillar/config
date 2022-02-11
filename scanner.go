@@ -148,7 +148,7 @@ redo:
 			lit = append(lit, r)
 			sc.typ = SizeLit
 			sc.lit = string(lit)
-		case 'K', 'M', 'G', 'T', 'P', 'E', 'Z':
+		case 'K', 'M', 'G', 'T':
 			lit = append(lit, r)
 
 			if r = sc.get(); r == 'B' {
