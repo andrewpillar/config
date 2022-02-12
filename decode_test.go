@@ -165,8 +165,8 @@ func Test_DecodeFileLabel(t *testing.T) {
 	}
 
 	expectedPorts := map[string][]string{
-		"open":  []string{"8080", "8443"},
-		"close": []string{"80", "443"},
+		"open":  {"8080", "8443"},
+		"close": {"80", "443"},
 	}
 
 	for label, ports := range expectedPorts {
@@ -214,8 +214,8 @@ func Test_DecodeFileUTF8(t *testing.T) {
 
 func Test_DecodeFileDuration(t *testing.T) {
 	var cfg struct {
-		Hour     time.Duration
-		HourHalf time.Duration `config:"hour_half"`
+		Hour            time.Duration
+		HourHalf        time.Duration `config:"hour_half"`
 		HourHalfSeconds time.Duration `config:"hour_half_seconds"`
 	}
 

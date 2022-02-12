@@ -11,13 +11,13 @@ import (
 	"unicode/utf8"
 )
 
+// DecodeError reports an error that occurred during decoding.
 type DecodeError struct {
-	Pos    Pos
-	Param  string
-	Label  string
-	Type   reflect.Type
-	Field  string
-
+	Pos   Pos
+	Param string
+	Label string
+	Type  reflect.Type
+	Field string
 }
 
 func (e *DecodeError) Error() string {
@@ -312,7 +312,7 @@ func ErrorHandler(errh func(Pos, string)) Option {
 type Decoder struct {
 	fields *fields
 
-	name     string
+	name string
 
 	includes bool
 	envvars  bool
@@ -438,11 +438,11 @@ func (d *Decoder) doDecode(rv reflect.Value, p *Param) error {
 	if p.Label != nil {
 		if f.val.Kind() != reflect.Map {
 			return &DecodeError{
-				Pos:    p.Pos(),
-				Param:  p.Name.Value,
-				Label:  p.Label.Value,
-				Type:   el,
-				Field:  f.name,
+				Pos:   p.Pos(),
+				Param: p.Name.Value,
+				Label: p.Label.Value,
+				Type:  el,
+				Field: f.name,
 			}
 		}
 
@@ -480,7 +480,7 @@ func (d *Decoder) doDecode(rv reflect.Value, p *Param) error {
 
 	if err != nil {
 		return &DecodeError{
-			Pos: p.Pos(),
+			Pos:   p.Pos(),
 			Param: p.Name.Value,
 			Type:  el,
 			Field: f.name,
