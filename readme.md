@@ -81,16 +81,10 @@ The above file would then be decoded like so in your Go program,
         }
     }
 
-    // errh is used for handling any errors that may arise during parsing of
-    // configuration file.
-    func errh(pos config.Pos, msg string) {
-        fmt.Fprintf(os.Stderr, "%s - %s\n", pos, msg)
-    }
-
     func main() {
         var cfg Config
 
-        if err := config.Decode(&cfg, "server.conf", errh); err != nil {
+        if err := config.DecodeFile(&cfg, "server.conf"); err != nil {
             fmt.Fprintf(os.Stderr, "%s: %s\n", os.Args[0], err)
             os.Exit(1)
         }
