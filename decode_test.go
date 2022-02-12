@@ -60,7 +60,7 @@ func Test_DecodeArrays(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	Strings := []string{"one", "two", "three", "four"}
+	Strings := []string{"one", "two", "three", "four", `"five"`}
 	Ints := []int64{1, 2, 3, 4}
 	Floats := []float64{1.2, 3.4, 5.6, 7.8}
 	Bools := []bool{true, false}

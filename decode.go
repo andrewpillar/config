@@ -58,7 +58,19 @@ func litValue(rt reflect.Type, lit *Lit) (reflect.Value, error) {
 		if kind := rt.Kind(); kind != reflect.String {
 			return rv, lit.Err("cannot use string as " + kind.String())
 		}
-		rv = reflect.ValueOf(lit.Value)
+
+		val := make([]byte, 0, len(lit.Value))
+		end := len(lit.Value)
+
+		for i := 0; i < end; i++ {
+			b := lit.Value[i]
+
+			if b == '\\' {
+				continue
+			}
+			val = append(val, b)
+		}
+		rv = reflect.ValueOf(val)
 	case IntLit:
 		var bitSize int
 

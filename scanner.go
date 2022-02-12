@@ -91,6 +91,18 @@ func (sc *scanner) string() {
 		if r == '"' {
 			break
 		}
+		if r == '\\' {
+			r = sc.get()
+
+			if r == '"' {
+				r = sc.get()
+			}
+			continue
+		}
+		if r == '\n' {
+			sc.err("unexpected newline in string")
+			break
+		}
 		r = sc.get()
 	}
 
