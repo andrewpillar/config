@@ -46,7 +46,6 @@ var (
 		's': time.Second,
 		'm': time.Minute,
 		'h': time.Hour,
-		'd': time.Hour * 24,
 	}
 )
 

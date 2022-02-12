@@ -137,8 +137,8 @@ A bool is a `true` or `false` value.
 ### Duration
 
 Duration is a duration of time. This is a number literal suffixed with either
-`s`, `m`, `h`, or `d`, for second, minute, hour, or day respectively. Duration
-is decoded into the `time.Duration` type.
+`s`, `m`, or `h`, for second, minute, or hour respectively. Duration is decoded
+into the `time.Duration` type.
 
     seconds 10s
     minutes 10m

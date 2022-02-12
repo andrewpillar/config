@@ -143,7 +143,7 @@ redo:
 		return
 	}
 
-	if isDigit(r) {
+	if isDigit(r) || r == '-' {
 		sc.number()
 
 		r = sc.get()
@@ -152,7 +152,7 @@ redo:
 
 		// Check if we have a suffix for a duration or size literal.
 		switch r {
-		case 's', 'm', 'h', 'd':
+		case 's', 'm', 'h':
 			lit = append(lit, r)
 			sc.typ = DurationLit
 			sc.lit = string(lit)

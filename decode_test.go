@@ -64,7 +64,7 @@ func Test_DecodeArrays(t *testing.T) {
 	Ints := []int64{1, 2, 3, 4}
 	Floats := []float64{1.2, 3.4, 5.6, 7.8}
 	Bools := []bool{true, false}
-	Durations := []time.Duration{time.Second, time.Minute * 2, time.Hour * 3, time.Hour * 4 * 24}
+	Durations := []time.Duration{time.Second, time.Minute * 2, time.Hour * 3}
 	Sizes := []int64{1, 2048, 3145728, 4294967296, 5497558138880}
 	Blocks := []Block{{"foo"}, {"bar"}, {"baz"}}
 
