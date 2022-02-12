@@ -1,52 +1,52 @@
 package config
 
-type Node interface {
+type node interface {
 	Pos() Pos
 
 	Err(msg string) error
 }
 
-type node struct {
+type baseNode struct {
 	pos Pos
 }
 
-func (n node) Pos() Pos {
+func (n baseNode) Pos() Pos {
 	return n.pos
 }
 
-func (n node) Err(msg string) error {
+func (n baseNode) Err(msg string) error {
 	return n.pos.Err(msg)
 }
 
-type Name struct {
-	node
+type name struct {
+	baseNode
 
 	Value string
 }
 
-type Lit struct {
-	node
+type lit struct {
+	baseNode
 
 	Value string
 	Type  LitType
 }
 
-type Param struct {
-	node
+type param struct {
+	baseNode
 
-	Name  *Name
-	Label *Name
-	Value Node
+	Name  *name
+	Label *name
+	Value node
 }
 
-type Block struct {
-	node
+type block struct {
+	baseNode
 
-	Params []*Param
+	Params []*param
 }
 
-type Array struct {
-	node
+type array struct {
+	baseNode
 
-	Items []Node
+	Items []node
 }

@@ -60,13 +60,13 @@ func (p *parser) advance(follow ...token) {
 	}
 }
 
-func (p *parser) literal() *Lit {
+func (p *parser) literal() *lit {
 	if p.tok != _Literal {
 		return nil
 	}
 
-	n := &Lit{
-		node:  p.node(),
+	n := &lit{
+		baseNode:  p.node(),
 		Type:  p.typ,
 		Value: p.lit,
 	}
@@ -86,11 +86,11 @@ func (p *parser) list(sep, end token, parse func()) {
 	p.want(end)
 }
 
-func (p *parser) block() *Block {
+func (p *parser) block() *block {
 	p.want(_Lbrace)
 
-	n := &Block{
-		node: p.node(),
+	n := &block{
+		baseNode: p.node(),
 	}
 
 	p.list(_Semi, _Rbrace, func() {
@@ -104,11 +104,11 @@ func (p *parser) block() *Block {
 	return n
 }
 
-func (p *parser) arr() *Array {
+func (p *parser) arr() *array {
 	p.want(_Lbrack)
 
-	n := &Array{
-		node: p.node(),
+	n := &array{
+		baseNode: p.node(),
 	}
 
 	p.list(_Comma, _Rbrack, func() {
@@ -117,8 +117,8 @@ func (p *parser) arr() *Array {
 	return n
 }
 
-func (p *parser) operand() Node {
-	var n Node
+func (p *parser) operand() node {
+	var n node
 
 	switch p.tok {
 	case _Literal:
@@ -136,8 +136,8 @@ func (p *parser) operand() Node {
 			break
 		}
 
-		n = &Lit{
-			node:  name.node,
+		n = &lit{
+			baseNode:  name.baseNode,
 			Type:  BoolLit,
 			Value: name.Value,
 		}
@@ -148,19 +148,19 @@ func (p *parser) operand() Node {
 	return n
 }
 
-func (p *parser) node() node {
-	return node{
+func (p *parser) node() baseNode {
+	return baseNode{
 		pos: p.pos,
 	}
 }
 
-func (p *parser) name() *Name {
+func (p *parser) name() *name {
 	if p.tok != _Name {
 		return nil
 	}
 
-	n := &Name{
-		node:  p.node(),
+	n := &name{
+		baseNode:  p.node(),
 		Value: p.lit,
 	}
 
@@ -168,40 +168,40 @@ func (p *parser) name() *Name {
 	return n
 }
 
-func (p *parser) param() *Param {
+func (p *parser) param() *param {
 	if p.tok != _Name {
 		p.unexpected(p.tok)
 		p.advance(_Semi)
 		return nil
 	}
 
-	param := &Param{
-		node: p.node(),
+	n := &param{
+		baseNode: p.node(),
 		Name: p.name(),
 	}
 
 	if p.tok == _Name {
-		param.Label = p.name()
+		n.Label = p.name()
 
 		if p.tok == _Semi {
-			if param.Label.Value == "true" || param.Label.Value == "false" {
-				param.Value = &Lit{
-					node:  param.Label.node,
+			if n.Label.Value == "true" || n.Label.Value == "false" {
+				n.Value = &lit{
+					baseNode:  n.Label.baseNode,
 					Type:  BoolLit,
-					Value: param.Label.Value,
+					Value: n.Label.Value,
 				}
-				param.Label = nil
+				n.Label = nil
 			}
-			return param
+			return n
 		}
 	}
 
-	param.Value = p.operand()
+	n.Value = p.operand()
 
-	return param
+	return n
 }
 
-func (p *parser) include() []Node {
+func (p *parser) include() []node {
 	files := make([]string, 0)
 
 	switch p.tok {
@@ -217,7 +217,7 @@ func (p *parser) include() []Node {
 		arr := p.arr()
 
 		for _, it := range arr.Items {
-			lit, ok := it.(*Lit)
+			lit, ok := it.(*lit)
 
 			if !ok {
 				p.err("expected string literal in include array")
@@ -235,7 +235,7 @@ func (p *parser) include() []Node {
 		return nil
 	}
 
-	nn := make([]Node, 0)
+	nn := make([]node, 0)
 
 	for _, file := range files {
 		if file == p.scanner.name {
@@ -283,8 +283,8 @@ func (p *parser) include() []Node {
 	return nn
 }
 
-func (p *parser) parse() ([]Node, error) {
-	nn := make([]Node, 0)
+func (p *parser) parse() ([]node, error) {
+	nn := make([]node, 0)
 
 	for p.tok != _EOF {
 		if p.tok == _Semi {
@@ -295,7 +295,9 @@ func (p *parser) parse() ([]Node, error) {
 		if p.includes {
 			if p.tok == _Name {
 				if p.lit == "include" {
+					p.next()
 					nn = append(nn, p.include()...)
+					continue
 				}
 			}
 		}

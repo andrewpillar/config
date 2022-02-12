@@ -224,6 +224,28 @@ func Test_DecodeFileDuration(t *testing.T) {
 	}
 }
 
+func Test_DecodeInclude(t *testing.T) {
+	var cfg struct {
+		Block map[string]struct {
+			Strings []string
+		}
+
+		Hour            time.Duration
+		HourHalf        time.Duration `config:"hour_half"`
+		HourHalfSeconds time.Duration `config:"hour_half_seconds"`
+	}
+
+	opts := []Option{
+		ErrorHandler(errh(t)),
+		Includes,
+	}
+
+	if err := DecodeFile(&cfg, filepath.Join("testdata", "include.conf"), opts...); err != nil {
+		t.Fatal(err)
+	}
+	t.Log(cfg)
+}
+
 func Test_DecodeEnvVars(t *testing.T) {
 	var cfg struct {
 		Database struct {

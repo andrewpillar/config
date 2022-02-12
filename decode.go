@@ -95,7 +95,7 @@ func (d *Decoder) interpolate(s string) reflect.Value {
 	return reflect.ValueOf(string(val))
 }
 
-func (d *Decoder) decodeLiteral(rt reflect.Type, lit *Lit) (reflect.Value, error) {
+func (d *Decoder) decodeLiteral(rt reflect.Type, lit *lit) (reflect.Value, error) {
 	var rv reflect.Value
 
 	switch lit.Type {
@@ -197,7 +197,7 @@ func (d *Decoder) decodeLiteral(rt reflect.Type, lit *Lit) (reflect.Value, error
 	return rv, nil
 }
 
-func (d *Decoder) decodeBlock(rt reflect.Type, block *Block) (reflect.Value, error) {
+func (d *Decoder) decodeBlock(rt reflect.Type, block *block) (reflect.Value, error) {
 	var rv reflect.Value
 
 	if kind := rt.Kind(); kind != reflect.Struct {
@@ -214,7 +214,7 @@ func (d *Decoder) decodeBlock(rt reflect.Type, block *Block) (reflect.Value, err
 	return rv, nil
 }
 
-func (d *Decoder) decodeArray(rt reflect.Type, arr *Array) (reflect.Value, error) {
+func (d *Decoder) decodeArray(rt reflect.Type, arr *array) (reflect.Value, error) {
 	var rv reflect.Value
 
 	if kind := rt.Kind(); kind != reflect.Slice {
@@ -229,21 +229,21 @@ func (d *Decoder) decodeArray(rt reflect.Type, arr *Array) (reflect.Value, error
 		val := reflect.New(el).Elem()
 
 		switch v := it.(type) {
-		case *Lit:
+		case *lit:
 			litrv, err := d.decodeLiteral(el, v)
 
 			if err != nil {
 				return rv, err
 			}
 			val.Set(litrv.Convert(el))
-		case *Block:
+		case *block:
 			blockrv, err := d.decodeBlock(el, v)
 
 			if err != nil {
 				return rv, err
 			}
 			val.Set(blockrv)
-		case *Array:
+		case *array:
 			arrrv, err := d.decodeArray(el, v)
 
 			if err != nil {
@@ -370,7 +370,7 @@ func (d *Decoder) Decode(v interface{}, r io.Reader) error {
 	el := rv.Elem()
 
 	for _, n := range nn {
-		param, ok := n.(*Param)
+		param, ok := n.(*param)
 
 		if !ok {
 			panic("could not type assert to *Param")
@@ -413,7 +413,7 @@ func (d *Decoder) loadFields(rv reflect.Value) {
 	}
 }
 
-func (d *Decoder) doDecode(rv reflect.Value, p *Param) error {
+func (d *Decoder) doDecode(rv reflect.Value, p *param) error {
 	d.loadFields(rv)
 
 	f, ok := d.fields.get(p.Name.Value)
@@ -460,7 +460,7 @@ func (d *Decoder) doDecode(rv reflect.Value, p *Param) error {
 	)
 
 	switch v := p.Value.(type) {
-	case *Lit:
+	case *lit:
 		pv, err = d.decodeLiteral(el, v)
 
 		if err != nil {
@@ -472,9 +472,9 @@ func (d *Decoder) doDecode(rv reflect.Value, p *Param) error {
 			}
 		}
 		pv = pv.Convert(el)
-	case *Block:
+	case *block:
 		pv, err = d.decodeBlock(el, v)
-	case *Array:
+	case *array:
 		pv, err = d.decodeArray(el, v)
 	}
 

@@ -12,38 +12,38 @@ func errh(t *testing.T) func(Pos, string) {
 	}
 }
 
-func checkName(t *testing.T, expected, actual *Name) {
+func checkname(t *testing.T, expected, actual *name) {
 	if expected.Value != actual.Value {
-		t.Errorf("%s - unexpected Name.Value, expected=%q, got=%q\n", actual.Pos(), expected.Value, actual.Value)
+		t.Errorf("%s - unexpected name.Value, expected=%q, got=%q\n", actual.Pos(), expected.Value, actual.Value)
 	}
 }
 
-func checkLit(t *testing.T, expected, actual *Lit) {
+func checklit(t *testing.T, expected, actual *lit) {
 	if expected.Value != actual.Value {
-		t.Errorf("%s - unexpected Lit.Value, expected=%q, got=%q\n", actual.Pos(), expected.Value, actual.Value)
+		t.Errorf("%s - unexpected lit.Value, expected=%q, got=%q\n", actual.Pos(), expected.Value, actual.Value)
 	}
 
 	if expected.Type != actual.Type {
-		t.Errorf("%s - unexpected Lit.Type, expected=%q, got=%q\n", actual.Pos(), expected.Type, actual.Type)
+		t.Errorf("%s - unexpected lit.Type, expected=%q, got=%q\n", actual.Pos(), expected.Type, actual.Type)
 	}
 }
 
-func checkParam(t *testing.T, expected, actual *Param) {
-	checkName(t, expected.Name, actual.Name)
+func checkparam(t *testing.T, expected, actual *param) {
+	checkname(t, expected.Name, actual.Name)
 
 	if expected.Label != nil {
 		if actual.Label == nil {
-			t.Errorf("%s - expected Param.Label to be non-nil\n", actual.Pos())
+			t.Errorf("%s - expected param.Label to be non-nil\n", actual.Pos())
 			return
 		}
-		checkName(t, expected.Label, actual.Label)
+		checkname(t, expected.Label, actual.Label)
 	}
 	checkNode(t, expected.Value, actual.Value)
 }
 
-func checkBlock(t *testing.T, expected, actual *Block) {
+func checkBlock(t *testing.T, expected, actual *block) {
 	if l := len(expected.Params); l != len(actual.Params) {
-		t.Errorf("%s - unexpected Block.Params length, expected=%d, got=%d\n", actual.Pos(), l, len(actual.Params))
+		t.Errorf("%s - unexpected block.Params length, expected=%d, got=%d\n", actual.Pos(), l, len(actual.Params))
 		return
 	}
 
@@ -52,9 +52,9 @@ func checkBlock(t *testing.T, expected, actual *Block) {
 	}
 }
 
-func checkArray(t *testing.T, expected, actual *Array) {
+func checkArray(t *testing.T, expected, actual *array) {
 	if l := len(expected.Items); l != len(actual.Items) {
-		t.Errorf("%s - unexpected Array.Items length, expected=%d, got=%d\n", actual.Pos(), l, len(actual.Items))
+		t.Errorf("%s - unexpected array.Items length, expected=%d, got=%d\n", actual.Pos(), l, len(actual.Items))
 		return
 	}
 
@@ -63,42 +63,42 @@ func checkArray(t *testing.T, expected, actual *Array) {
 	}
 }
 
-func checkNode(t *testing.T, expected, actual Node) {
+func checkNode(t *testing.T, expected, actual node) {
 	switch v := expected.(type) {
-	case *Name:
-		name, ok := actual.(*Name)
+	case *name:
+		name, ok := actual.(*name)
 
 		if !ok {
 			t.Errorf("%s - unexpected node type, expected=%T, got=%T\n", actual.Pos(), v, actual)
 			return
 		}
-		checkName(t, v, name)
-	case *Lit:
-		lit, ok := actual.(*Lit)
+		checkname(t, v, name)
+	case *lit:
+		lit, ok := actual.(*lit)
 
 		if !ok {
 			t.Errorf("%s - unexpected node type, expected=%T, got=%T\n", actual.Pos(), v, actual)
 			return
 		}
-		checkLit(t, v, lit)
-	case *Param:
-		param, ok := actual.(*Param)
+		checklit(t, v, lit)
+	case *param:
+		param, ok := actual.(*param)
 
 		if !ok {
 			t.Errorf("%s - unexpected node type, expected=%T, got=%T\n", actual.Pos(), v, actual)
 			return
 		}
-		checkParam(t, v, param)
-	case *Block:
-		block, ok := actual.(*Block)
+		checkparam(t, v, param)
+	case *block:
+		block, ok := actual.(*block)
 
 		if !ok {
 			t.Errorf("%s - unexpected node type, expected=%T, got=%T\n", actual.Pos(), v, actual)
 			return
 		}
 		checkBlock(t, v, block)
-	case *Array:
-		array, ok := actual.(*Array)
+	case *array:
+		array, ok := actual.(*array)
 
 		if !ok {
 			t.Errorf("%s - unexpected node type, expected=%T, got=%T\n", actual.Pos(), v, actual)
@@ -130,40 +130,40 @@ func Test_Parser(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	expected := []Node{
-		&Param{
-			Name:  &Name{Value: "log"},
-			Label: &Name{Value: "debug"},
-			Value: &Lit{
+	expected := []node{
+		&param{
+			Name:  &name{Value: "log"},
+			Label: &name{Value: "debug"},
+			Value: &lit{
 				Value: "/dev/stdout",
 				Type:  StringLit,
 			},
 		},
-		&Param{
-			Name: &Name{Value: "net"},
-			Value: &Block{
-				Params: []*Param{
+		&param{
+			Name: &name{Value: "net"},
+			Value: &block{
+				Params: []*param{
 					{
-						Name: &Name{Value: "listen"},
-						Value: &Lit{
+						Name: &name{Value: "listen"},
+						Value: &lit{
 							Value: "localhost:443",
 							Type:  StringLit,
 						},
 					},
 					{
-						Name: &Name{Value: "tls"},
-						Value: &Block{
-							Params: []*Param{
+						Name: &name{Value: "tls"},
+						Value: &block{
+							Params: []*param{
 								{
-									Name: &Name{Value: "cert"},
-									Value: &Lit{
+									Name: &name{Value: "cert"},
+									Value: &lit{
 										Value: "/var/lib/ssl/server.crt",
 										Type:  StringLit,
 									},
 								},
 								{
-									Name: &Name{Value: "key"},
-									Value: &Lit{
+									Name: &name{Value: "key"},
+									Value: &lit{
 										Value: "/var/lib/ssl/server.key",
 										Type:  StringLit,
 									},
@@ -174,32 +174,32 @@ func Test_Parser(t *testing.T) {
 				},
 			},
 		},
-		&Param{
-			Name: &Name{Value: "drivers"},
-			Value: &Array{
-				Items: []Node{
-					&Lit{
+		&param{
+			Name: &name{Value: "drivers"},
+			Value: &array{
+				Items: []node{
+					&lit{
 						Value: "docker",
 						Type:  StringLit,
 					},
-					&Lit{
+					&lit{
 						Value: "qemu-x86_64",
 						Type:  StringLit,
 					},
 				},
 			},
 		},
-		&Param{
-			Name: &Name{Value: "cache"},
-			Value: &Block{
-				Params: []*Param{
+		&param{
+			Name: &name{Value: "cache"},
+			Value: &block{
+				Params: []*param{
 					{
-						Name: &Name{Value: "redis"},
-						Value: &Block{
-							Params: []*Param{
+						Name: &name{Value: "redis"},
+						Value: &block{
+							Params: []*param{
 								{
-									Name: &Name{Value: "addr"},
-									Value: &Lit{
+									Name: &name{Value: "addr"},
+									Value: &lit{
 										Value: "localhost:6379",
 										Type:  StringLit,
 									},
@@ -208,8 +208,8 @@ func Test_Parser(t *testing.T) {
 						},
 					},
 					{
-						Name: &Name{Value: "cleanup_interval"},
-						Value: &Lit{
+						Name: &name{Value: "cleanup_interval"},
+						Value: &lit{
 							Value: "1h",
 							Type:  DurationLit,
 						},
@@ -217,28 +217,28 @@ func Test_Parser(t *testing.T) {
 				},
 			},
 		},
-		&Param{
-			Name:  &Name{Value: "store"},
-			Label: &Name{Value: "files"},
-			Value: &Block{
-				Params: []*Param{
+		&param{
+			Name:  &name{Value: "store"},
+			Label: &name{Value: "files"},
+			Value: &block{
+				Params: []*param{
 					{
-						Name: &Name{Value: "type"},
-						Value: &Lit{
+						Name: &name{Value: "type"},
+						Value: &lit{
 							Value: "file",
 							Type:  StringLit,
 						},
 					},
 					{
-						Name: &Name{Value: "path"},
-						Value: &Lit{
+						Name: &name{Value: "path"},
+						Value: &lit{
 							Value: "/var/lib/files",
 							Type:  StringLit,
 						},
 					},
 					{
-						Name: &Name{Value: "limit"},
-						Value: &Lit{
+						Name: &name{Value: "limit"},
+						Value: &lit{
 							Value: "50MB",
 							Type:  SizeLit,
 						},
