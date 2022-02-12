@@ -101,7 +101,7 @@ can be passed to either the `NewDecoder` function or the `DecodeFile` function.
 A custom error handler can be configured via the `ErrorHandler` option. This
 takes a `func(pos Pos, msg string)` callback, which is called when an error
 occurs during parsing of a file. This is given the position at which the error
-occurred, and the message. If not handler is configured, then the `Stderrh`
+occurred, and the message. If no handler is configured, then the `Stderrh`
 error handler is used by default.
 
     config.DecodeFile(&cfg, "file.conf", config.ErrorHandler(customHandler))
