@@ -2,11 +2,30 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"reflect"
 	"strconv"
 	"time"
 )
+
+type DecodeError struct {
+	Pos    Pos
+	Param  string
+	Label  string
+	Type   reflect.Type
+	Field  string
+
+}
+
+func (e *DecodeError) Error() string {
+	param := e.Param
+
+	if e.Label != "" {
+		param += " " + e.Label
+	}
+	return fmt.Sprintf("config: %s - cannot decode %q into field %s of type %s", e.Pos, param, e.Field, e.Type)
+}
 
 var (
 	sizb  int64 = 1
@@ -275,7 +294,13 @@ func (d *decoder) decode(rv reflect.Value, p *Param) error {
 
 	if p.Label != nil {
 		if f.val.Kind() != reflect.Map {
-			return p.Err("can only decode labeled parameter into map")
+			return &DecodeError{
+				Pos:    p.Pos(),
+				Param:  p.Name.Value,
+				Label:  p.Label.Value,
+				Type:   el,
+				Field:  f.name,
+			}
 		}
 
 		t := f.val.Type()
@@ -296,7 +321,12 @@ func (d *decoder) decode(rv reflect.Value, p *Param) error {
 		pv, err = litValue(el, v)
 
 		if err != nil {
-			return err
+			return &DecodeError{
+				Pos:   p.Pos(),
+				Param: p.Name.Value,
+				Type:  el,
+				Field: f.name,
+			}
 		}
 		pv = pv.Convert(el)
 	case *Block:
@@ -306,7 +336,12 @@ func (d *decoder) decode(rv reflect.Value, p *Param) error {
 	}
 
 	if err != nil {
-		return err
+		return &DecodeError{
+			Pos: p.Pos(),
+			Param: p.Name.Value,
+			Type:  el,
+			Field: f.name,
+		}
 	}
 
 	if p.Label != nil {

@@ -42,6 +42,10 @@ func Test_DecodeSimpleConfig(t *testing.T) {
 }
 
 func Test_DecodeArrays(t *testing.T) {
+	type Block struct {
+		String string
+	}
+
 	var cfg struct {
 		Strings   []string
 		Ints      []int64
@@ -49,6 +53,7 @@ func Test_DecodeArrays(t *testing.T) {
 		Bools     []bool
 		Durations []time.Duration
 		Sizes     []int64
+		Blocks    []Block
 	}
 
 	if err := Decode(&cfg, filepath.Join("testdata", "array.conf"), errh(t)); err != nil {
@@ -61,6 +66,7 @@ func Test_DecodeArrays(t *testing.T) {
 	Bools := []bool{true, false}
 	Durations := []time.Duration{time.Second, time.Minute * 2, time.Hour * 3, time.Hour * 4 * 24}
 	Sizes := []int64{1, 2048, 3145728, 4294967296, 5497558138880}
+	Blocks := []Block{{"foo"}, {"bar"}, {"baz"}}
 
 	for i, str := range Strings {
 		if cfg.Strings[i] != str {
@@ -95,6 +101,12 @@ func Test_DecodeArrays(t *testing.T) {
 	for i, siz := range Sizes {
 		if cfg.Sizes[i] != siz {
 			t.Errorf("Sizes[%d] - unexpected int64, expected=%d, got=%d\n", i, siz, cfg.Sizes[i])
+		}
+	}
+
+	for i, block := range Blocks {
+		if cfg.Blocks[i].String != block.String {
+			t.Errorf("Blocks[%d] - unexpected string, expected=%q, got=%q\n", i, block.String, cfg.Blocks[i].String)
 		}
 	}
 }
@@ -146,6 +158,34 @@ func Test_DecodeLabel(t *testing.T) {
 
 		if cfg.TLS.CA != auth.TLS.CA {
 			t.Fatalf("unexpected TLS.CA, expected=%q, got=%q\n", cfg.TLS.CA, auth.TLS.CA)
+		}
+	}
+}
+
+func Test_DecodeUTF8(t *testing.T) {
+	var cfg struct {
+		Block map[string]struct {
+			Strings []string
+		}
+	}
+
+	if err := Decode(&cfg, filepath.Join("testdata", "utf8.conf"), errh(t)); err != nil {
+		t.Fatal(err)
+	}
+
+	label := "标签"
+
+	block, ok := cfg.Block[label]
+
+	if !ok {
+		t.Fatalf("could not find label %q\n", label)
+	}
+
+	expected := "细绳"
+
+	for i, s := range block.Strings {
+		if s != expected {
+			t.Fatalf("cfg.Block[%q].Strings[%d] - unexpected string, expected=%q, got=%q\n", label, i, expected, s)
 		}
 	}
 }
