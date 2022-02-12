@@ -117,12 +117,13 @@ file into the respective environment variable.
 ### Includes
 
 Includes can be configured via the `Includes` option. This will support the
-inclusion of configuration files via the `include` parameter. This expects to
-be given either a string literal or an array of string literals for the file(s)
-to include.
+inclusion of configuration files via the `include` parameter.
 
     config.DecodeFile(&cfg, "file.conf", config.Includes)
 
+
+This expects to be given either a string literal or an array of string literals
+for the file(s) to include,
 
     include "database.conf"
 
