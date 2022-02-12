@@ -124,13 +124,15 @@ func Test_DecodeLabel(t *testing.T) {
 
 	var cfg struct {
 		Auth map[string]Auth
+
+		Ports map[string][]string
 	}
 
 	if err := Decode(&cfg, filepath.Join("testdata", "label.conf"), errh(t)); err != nil {
 		t.Fatal(err)
 	}
 
-	expected := map[string]Auth{
+	expectedAuth := map[string]Auth{
 		"internal": {
 			Addr: "postgres://localhost:5432",
 			TLS:  TLS{},
@@ -145,7 +147,7 @@ func Test_DecodeLabel(t *testing.T) {
 		},
 	}
 
-	for label, auth := range expected {
+	for label, auth := range expectedAuth {
 		cfg, ok := cfg.Auth[label]
 
 		if !ok {
@@ -158,6 +160,25 @@ func Test_DecodeLabel(t *testing.T) {
 
 		if cfg.TLS.CA != auth.TLS.CA {
 			t.Fatalf("unexpected TLS.CA, expected=%q, got=%q\n", cfg.TLS.CA, auth.TLS.CA)
+		}
+	}
+
+	expectedPorts := map[string][]string{
+		"open":  []string{"8080", "8443"},
+		"close": []string{"80", "443"},
+	}
+
+	for label, ports := range expectedPorts {
+		cfg, ok := cfg.Ports[label]
+
+		if !ok {
+			t.Fatalf("could not find label %q\n", label)
+		}
+
+		for i := range cfg {
+			if ports[i] != cfg[i] {
+				t.Fatalf("unxepected ports[%d], expected=%q, got=%q\n", i, ports[i], cfg[i])
+			}
 		}
 	}
 }
