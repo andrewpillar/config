@@ -2,6 +2,9 @@
 
 * [Overview](#overview)
 * [Options](#options)
+  * [Error handling](#error-handling)
+  * [Environment variables](#environment-variables)
+  * [Includes](#includes)
 * [Syntax](#syntax)
   * [Comments](#comments)
   * [String](#string)
