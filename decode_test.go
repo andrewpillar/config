@@ -210,3 +210,16 @@ func Test_DecodeUTF8(t *testing.T) {
 		}
 	}
 }
+
+func Test_DecodeDuration(t *testing.T) {
+	var cfg struct {
+		Hour     time.Duration
+		HourHalf time.Duration `config:"hour_half"`
+		HourHalfSeconds time.Duration `config:"hour_half_seconds"`
+	}
+
+	if err := Decode(&cfg, filepath.Join("testdata", "duration.conf"), errh(t)); err != nil {
+		t.Fatal(err)
+	}
+	t.Log(cfg)
+}

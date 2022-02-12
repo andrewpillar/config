@@ -114,6 +114,26 @@ func (sc *scanner) string() {
 	sc.lit = lit[1 : len(lit)-1]
 }
 
+func (sc *scanner) duration(r rune) {
+	lit := []rune(sc.lit)
+
+	for r == 's' || r == 'm' || r == 'h' {
+		lit = append(lit, r)
+
+		r = sc.get()
+
+		if isDigit(r) {
+			sc.number()
+			lit = append(lit, []rune(sc.lit)...)
+			r = sc.get()
+		}
+	}
+	sc.unget()
+
+	sc.typ = DurationLit
+	sc.lit = string(lit)
+}
+
 func (sc *scanner) next() {
 	nlsemi := sc.nlsemi
 	sc.nlsemi = false
@@ -153,9 +173,7 @@ redo:
 		// Check if we have a suffix for a duration or size literal.
 		switch r {
 		case 's', 'm', 'h':
-			lit = append(lit, r)
-			sc.typ = DurationLit
-			sc.lit = string(lit)
+			sc.duration(r)
 		case 'B':
 			lit = append(lit, r)
 			sc.typ = SizeLit

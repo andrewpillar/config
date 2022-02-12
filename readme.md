@@ -144,6 +144,10 @@ into the `time.Duration` type.
     minutes 10m
     hours   10h
 
+The duration units can also be combined for more explicit values,
+
+    hour_half 1h30m
+
 ### Size
 
 Size is the amount of bytes. This is a number literal suffixed with the unit,
