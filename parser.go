@@ -66,9 +66,9 @@ func (p *parser) literal() *lit {
 	}
 
 	n := &lit{
-		baseNode:  p.node(),
-		Type:  p.typ,
-		Value: p.lit,
+		baseNode: p.node(),
+		Type:     p.typ,
+		Value:    p.lit,
 	}
 	p.next()
 	return n
@@ -137,9 +137,9 @@ func (p *parser) operand() node {
 		}
 
 		n = &lit{
-			baseNode:  name.baseNode,
-			Type:  BoolLit,
-			Value: name.Value,
+			baseNode: name.baseNode,
+			Type:     BoolLit,
+			Value:    name.Value,
 		}
 	default:
 		p.unexpected(p.tok)
@@ -160,8 +160,8 @@ func (p *parser) name() *name {
 	}
 
 	n := &name{
-		baseNode:  p.node(),
-		Value: p.lit,
+		baseNode: p.node(),
+		Value:    p.lit,
 	}
 
 	p.next()
@@ -177,7 +177,7 @@ func (p *parser) param() *param {
 
 	n := &param{
 		baseNode: p.node(),
-		Name: p.name(),
+		Name:     p.name(),
 	}
 
 	if p.tok == _Name {
@@ -186,9 +186,9 @@ func (p *parser) param() *param {
 		if p.tok == _Semi {
 			if n.Label.Value == "true" || n.Label.Value == "false" {
 				n.Value = &lit{
-					baseNode:  n.Label.baseNode,
-					Type:  BoolLit,
-					Value: n.Label.Value,
+					baseNode: n.Label.baseNode,
+					Type:     BoolLit,
+					Value:    n.Label.Value,
 				}
 				n.Label = nil
 			}
