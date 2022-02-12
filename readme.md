@@ -1,40 +1,58 @@
 # Config
 
->**Note:** This library is still a work in progress, and is very rudimentary
-in its implementation. As of now the library does not support folding of
-parameter names for example, contrary to what the code examples may imply.
+* [Overview](#overview)
+* [Syntax](#syntax)
+  * [Comments](#comments)
+  * [String](#string)
+  * [Number](#number)
+  * [Bool](#bool)
+  * [Duration](#duration)
+  * [Size](#size)
+  * [Array](#array)
+  * [Block](#block)
+  * [Label](#label)
 
 Config is a library for working with structured configuration files in Go. This
-library defines its own structured configuration language which allows for the
-organization of configuration into *parameters* and *blocks*. Below is an
+library defines its own minimal structured configuration language.
+
+## Overview
+
+The language organizes configuration into a list of parameters. Below is an
 example,
 
-    $ cat server.conf
+    # Example configuration file.
+
     net {
-        listen "localhost:443"
+        listen ":https"
 
         tls {
             cert "/var/lib/ssl/server.crt"
             key  "/var/lib/ssl/server.key"
+
+            ciphers ["AES-128SHA256", "AES-256SHA256"]
         }
     }
 
-    database "/var/lib/db.sqlite"
-
-    store files {
-        path  "/var/lib/files"
-
-        # Support for sizes using the suffix B, KB, MB, GB, TB, PB, EB, and ZB.
-        limit 50MB
+    log access {
+        level "info"
+        file  "/var/log/http/access.log"
     }
 
-then, to make use of the above file in your application you would write,
+    body_limt 50MB
+
+    timeout {
+        read  10m
+        write 10m
+    }
+
+The above file would then be decoded like so in your Go program,
 
     package main
 
     import (
         "fmt"
         "os"
+        "time"
 
         "github.com/andrewpillar/config"
     )
@@ -44,16 +62,22 @@ then, to make use of the above file in your application you would write,
             Listen string
 
             TLS struct {
-                Cert string
-                Key  string
+                Cert    string
+                Key     string
+                Ciphers []string
             }
         }
 
-        Database string
+        Log map[string] struct {
+            Level string
+            File  string
+       }
 
-        Store map[string]struct {
-            Path  string
-            Limit int64
+        BodyLimit int64 `config:"body_limit"`
+
+        Timeout struct {
+            Read  time.Duration
+            Write time.Duration
         }
     }
 
@@ -72,49 +96,114 @@ then, to make use of the above file in your application you would write,
         }
     }
 
-The configuration language is a plain text file containing a list of parameters.
-Comments in the language start with `#` and end with a newline.
+## Syntax
+
+A configuration file is a plain text file with a list of parameters and their
+values. The value of a parameter can either be a literal, array, or a parameter
+block. Typically, the filename should be suffixed with the `.conf` file
+extension.
+
+### Comments
+
+Comments start with `#` and end with a newline. This can either be on a full
+line, or inlined.
 
     # Full-line comment.
-    log "/dev/stdout" # Inline comment.
+    temp 0.5 # Inline comment.
 
-A parameter is just a named value, where the value is either a literal, an
-array, or a block. A literal can be one of the following,
+### String
 
-* `string` - A sequence of bytes wrapped between a pair of `"`.
-* `int` - A numeric value that is a whole number.
-* `float` - A numeric value that is a float.
-* `bool` - A value that is either `true` or `false`.
-* `duration` - A numeric value suffixed with with `s`, `m`, `h`, or `d` for
-second, minue, hour, or day respectively. This will be converted to a
-`time.Duration` when decoded.
-* `size` - A numeric value suffixed with `B`, `KB`, `MB`, `GB`, `TB`, `PB`,
-`EB`, or `ZB`. This will be converted to `int64` when decoded.
+A string is a sequence of bytes wrapped between a pair of `"`. As of now, string
+literals are limited in their capability. 
 
-an array is a list of values wrapped between a pair of `[ ]`,
+    string  "this is a string literal"
+    string2 "this is another \"string\" literal, with escapes"
 
-    strings ["one", "two", "three"]
-    numbers [1, 2, 3]
+### Number
 
-a block is a list of parameters wrapped between a pair of `{ }`,
+Integers and floats are supported. Integers are decoded into the `int64` type,
+and floats into the `float64` type.
+
+    int   10
+    float 10.25
+
+### Bool
+
+A bool is a `true` or `false` value.
+
+    bool  true
+    bool2 false
+
+### Duration
+
+Duration is a duration of time. This is a number literal suffixed with either
+`s`, `m`, `h`, or `d`, for second, minute, hour, or day respectively. Duration
+is decoded into the `time.Duration` type.
+
+    seconds 10s
+    minutes 10m
+    hours   10h
+    days    10d
+
+### Size
+
+Size is the amount of bytes. This is a number literal suffixed with the unit,
+either `B`, `KB`, `MB`, `GB`, or `TB`. Size is decoded into the `int64` type.
+
+    byte     1B
+    kilobyte 1KB
+    megabyte 1MB
+    gigabyte 1GB
+    terabyte 1TB
+
+### Array
+
+An array is a list of values, these can either be literals, or blocks wrapped
+in a pair of `[ ]`. Arrays are decoded into a slice of the respective type.
+
+    strings ["str", "str2", "str3"]
+    numbers [1, 2, 3, 4]
+
+    arrays [
+        [1, 2, 3],
+        [4, 5, 6],
+        [7, 8, 9],
+    ]
+
+    blocks [{
+        x 1
+        y 2
+        z 3
+    }, {
+        x 4
+        y 5
+        z 6
+    }, {
+        x 7
+        y 8
+        z 9
+    ]]
+
+### Block
+
+A block is a list of parameters wrapped between a pair of `{ }`. Blocks are
+decoded into a struct.
 
     block {
-        string "string"
-        number 10
-        duration 10h
-        size 10GB
-
-        array [true, false]
+        param "value"
 
         block2 {
-            # More parameters here.
+            param 10
         }
     }
 
-parameters can be labeled. Labelling a parameter allows for multiple
-parameters to be grouped together. For example, assume your application allows
-authenticating against multiple backends, you may want to group each
-configuration block by the backend,
+### Label
+
+A label can be used to distinguish between parameters of the same name. This
+can be useful when you have similar configuration parameters that you want to
+distinguish between. A labelled parameter is decoded into a map, where the
+key of the map is a string, the label itself, and the value of the map is
+the type for the parameter.
 
     auth ldap {
         addr "ldap://example.com"
@@ -125,10 +214,6 @@ configuration block by the backend,
         }
     }
 
-    auth internal {
-        addr "postgres://localhost:5432/db"
-    }
-
     auth saml {
         addr "https://idp.example.com"
 
@@ -137,17 +222,9 @@ configuration block by the backend,
         }
     }
 
-then in your Go code you would define a map of structs where the key would
-be the mechanism,
+Labels aren't just limited to blocks, they can be applied to any other
+parameter type,
 
-    type Config struct {
-        Auth map[string]struct {
-            Addr string
+    ports open ["8080", "8443"]
 
-            TLS struct {
-                CA   string
-                Cert string
-                Key  string
-            }
-        }
-    }
+    ports close ["80", "443"]
