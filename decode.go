@@ -283,6 +283,7 @@ var Stderrh = func(pos Pos, msg string) {
 	fmt.Fprintf(os.Stderr, "%s - %s\n", pos, msg)
 }
 
+// Option is a callback that is used to modify the behaviour of a Decoder.
 type Option func(d *Decoder) *Decoder
 
 // Includes enables the inclusion of additional configuration files via the

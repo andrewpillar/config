@@ -1,6 +1,7 @@
 # Config
 
 * [Overview](#overview)
+* [Options](#options)
 * [Syntax](#syntax)
   * [Comments](#comments)
   * [String](#string)
@@ -89,6 +90,43 @@ The above file would then be decoded like so in your Go program,
             os.Exit(1)
         }
     }
+
+## Options
+
+Options can be used to configure how a file is decoded. These are callbacks that
+can be passed to either the `NewDecoder` function or the `DecodeFile` function.
+
+### Error handling
+
+A custom error handler can be configured via the `ErrorHandler` option. This
+takes a `func(pos Pos, msg string)` callback, which is called when an error
+occurs during parsing of a file. This is given the position at which the error
+occurred, and the message. If not handler is configured, then the `Stderrh`
+error handler is used by default.
+
+    config.DecodeFile(&cfg, "file.conf", config.ErrorHandler(customHandler))
+
+### Environment variables
+
+Environment variables can be supported via the `Envvars` option. This will
+expand any `${VARIABLE}` that is found in a string literal in the configuration
+file into the respective environment variable.
+
+    config.DecodeFile(&cfg, "file.conf", config.Envvars)
+
+### Includes
+
+Includes can be configured via the `Includes` option. This will support the
+inclusion of configuration files via the `include` parameter. This expects to
+be given either a string literal or an array of string literals for the file(s)
+to include.
+
+    include "database.conf"
+
+    include [
+        "database.conf",
+        "smtp.conf",
+    ]
 
 ## Syntax
 
