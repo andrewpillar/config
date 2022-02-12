@@ -143,7 +143,6 @@ into the `time.Duration` type.
     seconds 10s
     minutes 10m
     hours   10h
-    days    10d
 
 ### Size
 
