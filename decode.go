@@ -3,10 +3,12 @@ package config
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"reflect"
 	"strconv"
 	"time"
+	"unicode/utf8"
 )
 
 type DecodeError struct {
@@ -43,7 +45,57 @@ var (
 	}
 )
 
-func litValue(rt reflect.Type, lit *Lit) (reflect.Value, error) {
+func (d *Decoder) interpolate(s string) reflect.Value {
+	end := len(s) - 1
+
+	interpolate := false
+
+	val := make([]rune, 0, len(s))
+	expr := make([]rune, 0, len(s))
+
+	i := 0
+	w := 1
+
+	for i <= end {
+		r := rune(s[i])
+
+		if r >= utf8.RuneSelf {
+			r, w = utf8.DecodeRune([]byte(s[i:]))
+		}
+
+		i += w
+
+		if r == '\\' {
+			continue
+		}
+
+		if r == '$' && d.envvars {
+			if i <= end && s[i] == '{' {
+				interpolate = true
+				i++
+				continue
+			}
+		}
+
+		if r == '}' && interpolate {
+			interpolate = false
+
+			env := os.Getenv(string(expr))
+
+			val = append(val, []rune(env)...)
+			continue
+		}
+
+		if interpolate {
+			expr = append(expr, r)
+			continue
+		}
+		val = append(val, r)
+	}
+	return reflect.ValueOf(string(val))
+}
+
+func (d *Decoder) decodeLiteral(rt reflect.Type, lit *Lit) (reflect.Value, error) {
 	var rv reflect.Value
 
 	switch lit.Type {
@@ -51,19 +103,7 @@ func litValue(rt reflect.Type, lit *Lit) (reflect.Value, error) {
 		if kind := rt.Kind(); kind != reflect.String {
 			return rv, lit.Err("cannot use string as " + kind.String())
 		}
-
-		val := make([]byte, 0, len(lit.Value))
-		end := len(lit.Value)
-
-		for i := 0; i < end; i++ {
-			b := lit.Value[i]
-
-			if b == '\\' {
-				continue
-			}
-			val = append(val, b)
-		}
-		rv = reflect.ValueOf(val)
+		rv = d.interpolate(lit.Value)
 	case IntLit:
 		var bitSize int
 
@@ -157,7 +197,7 @@ func litValue(rt reflect.Type, lit *Lit) (reflect.Value, error) {
 	return rv, nil
 }
 
-func (d *decoder) decodeBlock(rt reflect.Type, block *Block) (reflect.Value, error) {
+func (d *Decoder) decodeBlock(rt reflect.Type, block *Block) (reflect.Value, error) {
 	var rv reflect.Value
 
 	if kind := rt.Kind(); kind != reflect.Struct {
@@ -167,14 +207,14 @@ func (d *decoder) decodeBlock(rt reflect.Type, block *Block) (reflect.Value, err
 	rv = reflect.New(rt).Elem()
 
 	for _, p := range block.Params {
-		if err := d.decode(rv, p); err != nil {
+		if err := d.doDecode(rv, p); err != nil {
 			return rv, err
 		}
 	}
 	return rv, nil
 }
 
-func (d *decoder) decodeArray(rt reflect.Type, arr *Array) (reflect.Value, error) {
+func (d *Decoder) decodeArray(rt reflect.Type, arr *Array) (reflect.Value, error) {
 	var rv reflect.Value
 
 	if kind := rt.Kind(); kind != reflect.Slice {
@@ -190,7 +230,7 @@ func (d *decoder) decodeArray(rt reflect.Type, arr *Array) (reflect.Value, error
 
 		switch v := it.(type) {
 		case *Lit:
-			litrv, err := litValue(el, v)
+			litrv, err := d.decodeLiteral(el, v)
 
 			if err != nil {
 				return rv, err
@@ -236,11 +276,114 @@ func (f *fields) get(name string) (*field, bool) {
 	return nil, false
 }
 
-type decoder struct {
-	fields *fields
+// Stderrh provides an implementation for the errh function that will write
+// each error to standard error. This is the default error handler used by the
+// decoder if none if otherwise configured.
+var Stderrh = func(pos Pos, msg string) {
+	fmt.Fprintf(os.Stderr, "%s - %s\n", pos, msg)
 }
 
-func (d *decoder) loadFields(rv reflect.Value) {
+type Option func(d *Decoder) *Decoder
+
+// Includes enables the inclusion of additional configuration files via the
+// include keyword. The value for an include must be either a string literal,
+// or an array of string literals.
+func Includes(d *Decoder) *Decoder {
+	d.includes = true
+	return d
+}
+
+// Envvars enables the expansion of environment variables in configuration.
+// Environment variables are specified like so ${VARIABLE}.
+func Envvars(d *Decoder) *Decoder {
+	d.envvars = true
+	return d
+}
+
+// ErrorHandler configures the error handler used during parsing of a
+// configuration file.
+func ErrorHandler(errh func(Pos, string)) Option {
+	return func(d *Decoder) *Decoder {
+		d.errh = errh
+		return d
+	}
+}
+
+type Decoder struct {
+	fields *fields
+
+	name     string
+
+	includes bool
+	envvars  bool
+	errh     func(Pos, string)
+}
+
+// NewDecoder returns a new decoder configured with the given options.
+func NewDecoder(name string, opts ...Option) *Decoder {
+	d := &Decoder{
+		name: name,
+		errh: Stderrh,
+	}
+
+	for _, opt := range opts {
+		d = opt(d)
+	}
+	return d
+}
+
+// DecodeFile decodes the file into the given interface.
+func DecodeFile(v interface{}, name string, opts ...Option) error {
+	d := NewDecoder(name, opts...)
+
+	f, err := os.Open(name)
+
+	if err != nil {
+		return err
+	}
+
+	defer f.Close()
+
+	return d.Decode(v, f)
+}
+
+// Decode decodes the contents of the given reader into the given interface.
+func (d *Decoder) Decode(v interface{}, r io.Reader) error {
+	rv := reflect.ValueOf(v)
+
+	if kind := rv.Kind(); kind != reflect.Ptr || rv.IsNil() {
+		return errors.New("cannot decode into " + kind.String())
+	}
+
+	p := parser{
+		scanner:  newScanner(newSource(d.name, r, d.errh)),
+		includes: d.includes,
+		inctab:   make(map[string]string),
+	}
+
+	nn, err := p.parse()
+
+	if err != nil {
+		return err
+	}
+
+	el := rv.Elem()
+
+	for _, n := range nn {
+		param, ok := n.(*Param)
+
+		if !ok {
+			panic("could not type assert to *Param")
+		}
+
+		if err := d.doDecode(el, param); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (d *Decoder) loadFields(rv reflect.Value) {
 	d.fields = &fields{
 		arr: make([]*field, 0),
 		tab: make(map[string]int),
@@ -270,7 +413,7 @@ func (d *decoder) loadFields(rv reflect.Value) {
 	}
 }
 
-func (d *decoder) decode(rv reflect.Value, p *Param) error {
+func (d *Decoder) doDecode(rv reflect.Value, p *Param) error {
 	d.loadFields(rv)
 
 	f, ok := d.fields.get(p.Name.Value)
@@ -318,7 +461,7 @@ func (d *decoder) decode(rv reflect.Value, p *Param) error {
 
 	switch v := p.Value.(type) {
 	case *Lit:
-		pv, err = litValue(el, v)
+		pv, err = d.decodeLiteral(el, v)
 
 		if err != nil {
 			return &DecodeError{
@@ -350,44 +493,5 @@ func (d *decoder) decode(rv reflect.Value, p *Param) error {
 	}
 
 	f.val.Set(pv)
-	return nil
-}
-
-func Decode(v interface{}, name string, errh func(Pos, string)) error {
-	rv := reflect.ValueOf(v)
-
-	if kind := rv.Kind(); kind != reflect.Ptr || rv.IsNil() {
-		return errors.New("cannot decode into " + kind.String())
-	}
-
-	f, err := os.Open(name)
-
-	if err != nil {
-		return err
-	}
-
-	defer f.Close()
-
-	nn, err := Parse(f.Name(), f, errh)
-
-	if err != nil {
-		return err
-	}
-
-	el := rv.Elem()
-
-	var dec decoder
-
-	for _, n := range nn {
-		param, ok := n.(*Param)
-
-		if !ok {
-			panic("could not type assert to *Param")
-		}
-
-		if err := dec.decode(el, param); err != nil {
-			return err
-		}
-	}
 	return nil
 }

@@ -1,12 +1,13 @@
 package config
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
 )
 
-func Test_DecodeSimpleConfig(t *testing.T) {
+func Test_DecodeFileSimpleConfig(t *testing.T) {
 	var cfg struct {
 		Log map[string]string
 
@@ -36,12 +37,12 @@ func Test_DecodeSimpleConfig(t *testing.T) {
 		}
 	}
 
-	if err := Decode(&cfg, filepath.Join("testdata", "server.conf"), errh(t)); err != nil {
+	if err := DecodeFile(&cfg, filepath.Join("testdata", "server.conf"), ErrorHandler(errh(t))); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func Test_DecodeArrays(t *testing.T) {
+func Test_DecodeFileArrays(t *testing.T) {
 	type Block struct {
 		String string
 	}
@@ -56,7 +57,7 @@ func Test_DecodeArrays(t *testing.T) {
 		Blocks    []Block
 	}
 
-	if err := Decode(&cfg, filepath.Join("testdata", "array.conf"), errh(t)); err != nil {
+	if err := DecodeFile(&cfg, filepath.Join("testdata", "array.conf"), ErrorHandler(errh(t))); err != nil {
 		t.Fatal(err)
 	}
 
@@ -111,7 +112,7 @@ func Test_DecodeArrays(t *testing.T) {
 	}
 }
 
-func Test_DecodeLabel(t *testing.T) {
+func Test_DecodeFileLabel(t *testing.T) {
 	type TLS struct {
 		CA string
 	}
@@ -128,7 +129,7 @@ func Test_DecodeLabel(t *testing.T) {
 		Ports map[string][]string
 	}
 
-	if err := Decode(&cfg, filepath.Join("testdata", "label.conf"), errh(t)); err != nil {
+	if err := DecodeFile(&cfg, filepath.Join("testdata", "label.conf"), ErrorHandler(errh(t))); err != nil {
 		t.Fatal(err)
 	}
 
@@ -183,14 +184,14 @@ func Test_DecodeLabel(t *testing.T) {
 	}
 }
 
-func Test_DecodeUTF8(t *testing.T) {
+func Test_DecodeFileUTF8(t *testing.T) {
 	var cfg struct {
 		Block map[string]struct {
 			Strings []string
 		}
 	}
 
-	if err := Decode(&cfg, filepath.Join("testdata", "utf8.conf"), errh(t)); err != nil {
+	if err := DecodeFile(&cfg, filepath.Join("testdata", "utf8.conf"), ErrorHandler(errh(t))); err != nil {
 		t.Fatal(err)
 	}
 
@@ -211,15 +212,38 @@ func Test_DecodeUTF8(t *testing.T) {
 	}
 }
 
-func Test_DecodeDuration(t *testing.T) {
+func Test_DecodeFileDuration(t *testing.T) {
 	var cfg struct {
 		Hour     time.Duration
 		HourHalf time.Duration `config:"hour_half"`
 		HourHalfSeconds time.Duration `config:"hour_half_seconds"`
 	}
 
-	if err := Decode(&cfg, filepath.Join("testdata", "duration.conf"), errh(t)); err != nil {
+	if err := DecodeFile(&cfg, filepath.Join("testdata", "duration.conf"), ErrorHandler(errh(t))); err != nil {
 		t.Fatal(err)
 	}
-	t.Log(cfg)
+}
+
+func Test_DecodeEnvVars(t *testing.T) {
+	var cfg struct {
+		Database struct {
+			Addr     string
+			Password string
+		}
+	}
+
+	os.Setenv("DB_PASSWORD", "secret")
+
+	opts := []Option{
+		ErrorHandler(errh(t)),
+		Envvars,
+	}
+
+	if err := DecodeFile(&cfg, filepath.Join("testdata", "envvars.conf"), opts...); err != nil {
+		t.Fatal(err)
+	}
+
+	if cfg.Database.Password != "secret" {
+		t.Fatalf("unexpected Database.Password, expected=%q, got=%q\n", "secret", cfg.Database.Password)
+	}
 }

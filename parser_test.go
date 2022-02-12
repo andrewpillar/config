@@ -119,7 +119,12 @@ func Test_Parser(t *testing.T) {
 
 	defer f.Close()
 
-	nn, err := Parse(f.Name(), f, errh(t))
+	p := parser{
+		scanner: newScanner(newSource(f.Name(), f, errh(t))),
+		inctab:  make(map[string]string),
+	}
+
+	nn, err := p.parse()
 
 	if err != nil {
 		t.Fatal(err)

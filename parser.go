@@ -2,20 +2,15 @@ package config
 
 import (
 	"fmt"
-	"io"
+	"os"
 )
 
 type parser struct {
 	*scanner
 
-	errc int
-}
-
-func Parse(name string, r io.Reader, errh func(Pos, string)) ([]Node, error) {
-	p := parser{
-		scanner: newScanner(newSource(name, r, errh)),
-	}
-	return p.parse()
+	errc     int
+	includes bool
+	inctab   map[string]string
 }
 
 func (p *parser) errAt(pos Pos, msg string) {
@@ -206,6 +201,88 @@ func (p *parser) param() *Param {
 	return param
 }
 
+func (p *parser) include() []Node {
+	files := make([]string, 0)
+
+	switch p.tok {
+	case _Literal:
+		if p.typ != StringLit {
+			p.err("unexpected " + p.typ.String())
+			return nil
+		}
+
+		files = append(files, p.lit)
+		p.literal()
+	case _Lbrack:
+		arr := p.arr()
+
+		for _, it := range arr.Items {
+			lit, ok := it.(*Lit)
+
+			if !ok {
+				p.err("expected string literal in include array")
+				break
+			}
+
+			if lit.Type != StringLit {
+				p.err("expected string literal in include array")
+				break
+			}
+			files = append(files, lit.Value)
+		}
+	default:
+		p.unexpected(p.tok)
+		return nil
+	}
+
+	nn := make([]Node, 0)
+
+	for _, file := range files {
+		if file == p.scanner.name {
+			p.err("cannot include self")
+			break
+		}
+
+		if source, ok := p.inctab[file]; ok {
+			p.err("already included from " + source)
+			break
+		}
+
+		p.inctab[file] = p.scanner.name
+
+		err := func(file string) error {
+			f, err := os.Open(file)
+
+			if err != nil {
+				return err
+			}
+
+			defer f.Close()
+
+			p := parser{
+				scanner:  newScanner(newSource(f.Name(), f, p.errh)),
+				includes: p.includes,
+				inctab:   p.inctab,
+			}
+
+			inc, err := p.parse()
+
+			if err != nil {
+				return err
+			}
+
+			nn = append(nn, inc...)
+			return nil
+		}(file)
+
+		if err != nil {
+			p.err(err.Error())
+			break
+		}
+	}
+	return nn
+}
+
 func (p *parser) parse() ([]Node, error) {
 	nn := make([]Node, 0)
 
@@ -213,6 +290,14 @@ func (p *parser) parse() ([]Node, error) {
 		if p.tok == _Semi {
 			p.next()
 			continue
+		}
+
+		if p.includes {
+			if p.tok == _Name {
+				if p.lit == "include" {
+					nn = append(nn, p.include()...)
+				}
+			}
 		}
 		nn = append(nn, p.param())
 	}
