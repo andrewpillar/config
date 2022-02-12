@@ -41,12 +41,6 @@ var (
 		"GB": sizgb,
 		"TB": siztb,
 	}
-
-	durtab = map[byte]time.Duration{
-		's': time.Second,
-		'm': time.Minute,
-		'h': time.Hour,
-	}
 )
 
 func litValue(rt reflect.Type, lit *Lit) (reflect.Value, error) {
@@ -126,17 +120,12 @@ func litValue(rt reflect.Type, lit *Lit) (reflect.Value, error) {
 			return rv, lit.Err("cannot use duration as " + kind.String())
 		}
 
-		end := len(lit.Value) - 1
+		dur, err := time.ParseDuration(lit.Value)
 
-		dur, ok := durtab[lit.Value[end]]
-
-		if !ok {
-			return rv, lit.Err("unrecognized duration")
+		if err != nil {
+			return rv, lit.Err(err.Error())
 		}
-
-		i, _ := strconv.ParseInt(lit.Value[:end], 10, 64)
-
-		rv = reflect.ValueOf(i * int64(dur))
+		rv = reflect.ValueOf(dur)
 	case SizeLit:
 		if kind := rt.Kind(); kind != reflect.Int64 {
 			return rv, lit.Err("cannot use duration as " + kind.String())
