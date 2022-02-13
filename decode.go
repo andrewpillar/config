@@ -258,10 +258,12 @@ func (d *Decoder) decodeArray(rt reflect.Type, arr *array) (reflect.Value, error
 }
 
 type field struct {
-	name    string
-	val     reflect.Value
-	fold    func(s, t []byte) bool
-	nogroup bool
+	name       string
+	val        reflect.Value
+	fold       func(s, t []byte) bool
+	deprecated bool
+	altname    string // alternative field name if deprecated
+	nogroup    bool
 }
 
 type fields struct {
@@ -395,7 +397,12 @@ func (d *Decoder) loadFields(rv reflect.Value) {
 	t := rv.Type()
 
 	for i := 0; i < rv.NumField(); i++ {
-		var nogroup bool
+		var (
+			deprecated bool
+			altname    string
+
+			nogroup bool
+		)
 
 		sf := t.Field(i)
 
@@ -413,12 +420,11 @@ func (d *Decoder) loadFields(rv reflect.Value) {
 			if len(parts) > 1 {
 				for _, part := range parts[1:] {
 					if strings.HasPrefix(part, "deprecated") {
-						msg := name + " is deprecated"
+						deprecated = true
 
 						if i := strings.Index(part, ":"); i > 0 {
-							msg += " use " + part[i+1:] + " instead"
+							altname = part[i+1:]
 						}
-						d.errh(Pos{File: d.name}, msg)
 						continue
 					}
 
@@ -434,10 +440,12 @@ func (d *Decoder) loadFields(rv reflect.Value) {
 		}
 
 		d.fields.arr = append(d.fields.arr, &field{
-			name:    name,
-			val:     rv.Field(i),
-			fold:    foldFunc([]byte(name)),
-			nogroup: nogroup,
+			name:       name,
+			val:        rv.Field(i),
+			fold:       foldFunc([]byte(name)),
+			deprecated: deprecated,
+			altname:    altname,
+			nogroup:    nogroup,
 		})
 		d.fields.tab[name] = i
 	}
@@ -461,6 +469,15 @@ func (d *Decoder) doDecode(rv reflect.Value, p *param) error {
 
 	if f == nil {
 		return nil
+	}
+
+	if f.deprecated {
+		msg := p.Name.Value + " is deprecated"
+
+		if f.altname != "" {
+			msg += " use " + f.altname + " instead"
+		}
+		d.errh(p.Pos(), msg)
 	}
 
 	el := f.val.Type()

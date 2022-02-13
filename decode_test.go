@@ -322,7 +322,7 @@ func Test_DecodeDeprecated(t *testing.T) {
 		t.Fatalf("expected decode to fail, it did not")
 	}
 
-	if errs[0] != "SSL is deprecated use tls instead" {
+	if errs[0] != "ssl is deprecated use tls instead" {
 		t.Fatalf("could not find deprecated message")
 	}
 }
