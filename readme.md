@@ -138,17 +138,14 @@ for the file(s) to include,
 
 ## Struct tags
 
-The `config` struct tag can be used to configure how the parameter names map
-to a struct field, for example,
+The decoding of each parameter can be configured via the `config` struct field
+tag. The name of the tag specifies the parameter to map the field to, and the
+subsequent comma separated list are additional options.
 
-    type Config struct {
-        Addr string `config:"listen_address"`
-    }
-
-The struct tag also supports marking parameters in the configuration file as
-being deprecated. For example, assume you have an `ssl` configuration block,
-and you want to mark this parameter as deprecated in favour of `tls`, then
-you would use the `deprecated` option,
+The `deprecated` option marks a field as deprecated. This will emit an error
+to the error handler during decoding if the deprecated parameter is encountered.
+For example, assume you have an `ssl` configuration block that you want to
+deprecate, you would do the following,
 
     type TLSConfig struct {
         CA   string
@@ -161,21 +158,51 @@ you would use the `deprecated` option,
         SSL TLSConfig `config:"ssl,deprecated"`
     }
 
-during decoding, the `deprecated` option will be used to emit an error to the
-error handle denoting this deprecation,
-
-    server.conf - ssl is deprecated
-
-the field that will replace the deprecated field can be specified like so,
+to specify the parameter that should replace the `ssl` parameter you would
+separate the name with a `:` in the option,
 
     type Config struct {
         TLS TLSConfig
         SSL TLSConfig `config:"ssl,deprecated:tls"`
     }
 
-this will modify the error emitted,
+The `nogroup` option prevents the grouping of labelled parameters into a map.
+This would be used in an instance where you want more explicit control over
+how labelled parameters are decoded. For example, consider the following
+configuration,
 
-    server.conf - ssl is deprecated use tls instead
+    store sftp {
+        addr "sftp.example.com"
+
+        auth {
+            username "sftp"
+            identity "/var/lib/ssh/id_rsa"
+        }
+    }
+
+    store disk {
+        path "/var/lib/files"
+    }
+
+this defines two `store` blocks that are labelled. Both blocks vary with the
+parameters that they offer. We can decode the above into the below struct,
+
+    type Config struct {
+        Store struct {
+            SFTP struct {
+                Addr string
+
+                Auth struct {
+                    Username string
+                    Identity string
+                }
+            }
+
+            Disk struct {
+                Path string
+            }
+        } `config:",nogroup"`
+    }
 
 ## Syntax
 

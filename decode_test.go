@@ -112,6 +112,37 @@ func Test_DecodeFileArrays(t *testing.T) {
 	}
 }
 
+func Test_DecodeNoGroupLabel(t *testing.T) {
+	var cfg struct {
+		Driver struct {
+			SSH struct {
+				Addr string
+
+				Auth struct {
+					Username string
+					Identity string
+				}
+			}
+
+			Docker struct {
+				Host    string
+				Version string
+			}
+
+			QEMU struct {
+				Disks  string
+				CPUs   int64
+				Memory int64
+			}
+		} `config:",nogroup"`
+	}
+
+	if err := DecodeFile(&cfg, filepath.Join("testdata", "nogroup.conf"), ErrorHandler(errh(t))); err != nil {
+		t.Fatal(err)
+	}
+	t.Log(cfg.Driver)
+}
+
 func Test_DecodeFileLabel(t *testing.T) {
 	type TLS struct {
 		CA string

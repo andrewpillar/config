@@ -258,9 +258,10 @@ func (d *Decoder) decodeArray(rt reflect.Type, arr *array) (reflect.Value, error
 }
 
 type field struct {
-	name string
-	val  reflect.Value
-	fold func(s, t []byte) bool
+	name    string
+	val     reflect.Value
+	fold    func(s, t []byte) bool
+	nogroup bool
 }
 
 type fields struct {
@@ -394,6 +395,8 @@ func (d *Decoder) loadFields(rv reflect.Value) {
 	t := rv.Type()
 
 	for i := 0; i < rv.NumField(); i++ {
+		var nogroup bool
+
 		sf := t.Field(i)
 
 		name := sf.Name
@@ -416,6 +419,11 @@ func (d *Decoder) loadFields(rv reflect.Value) {
 							msg += " use " + part[i+1:] + " instead"
 						}
 						d.errh(Pos{File: d.name}, msg)
+						continue
+					}
+
+					if part == "nogroup" {
+						nogroup = true
 					}
 				}
 			}
@@ -426,9 +434,10 @@ func (d *Decoder) loadFields(rv reflect.Value) {
 		}
 
 		d.fields.arr = append(d.fields.arr, &field{
-			name: name,
-			val:  rv.Field(i),
-			fold: foldFunc([]byte(name)),
+			name:    name,
+			val:     rv.Field(i),
+			fold:    foldFunc([]byte(name)),
+			nogroup: nogroup,
 		})
 		d.fields.tab[name] = i
 	}
@@ -457,6 +466,27 @@ func (d *Decoder) doDecode(rv reflect.Value, p *param) error {
 	el := f.val.Type()
 
 	if p.Label != nil {
+		// We don't want to group the parameter under a label, so make sure
+		// we're decoding into a struct, whereby the label would map to the
+		// struct field.
+		if f.nogroup {
+			if f.val.Kind() != reflect.Struct {
+				return &DecodeError{
+					Pos:   p.Pos(),
+					Param: p.Name.Value,
+					Label: p.Label.Value,
+					Type:  el,
+					Field: f.name,
+				}
+			}
+
+			return d.doDecode(f.val, &param{
+				baseNode: p.baseNode,
+				Name:     p.Label,
+				Value:    p.Value,
+			})
+		}
+
 		if f.val.Kind() != reflect.Map {
 			return &DecodeError{
 				Pos:   p.Pos(),
