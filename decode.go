@@ -7,6 +7,7 @@ import (
 	"os"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 	"unicode/utf8"
 )
@@ -398,7 +399,26 @@ func (d *Decoder) loadFields(rv reflect.Value) {
 		name := sf.Name
 
 		if tag := sf.Tag.Get("config"); tag != "" {
-			name = tag
+			parts := strings.Split(tag, ",")
+
+			name = parts[0]
+
+			if name == "" {
+				name = sf.Name
+			}
+
+			if len(parts) > 1 {
+				for _, part := range parts[1:] {
+					if strings.HasPrefix(part, "deprecated") {
+						msg := name + " is deprecated"
+
+						if i := strings.Index(part, ":"); i > 0 {
+							msg += " use " + part[i+1:] + " instead"
+						}
+						d.errh(Pos{File: d.name}, msg)
+					}
+				}
+			}
 		}
 
 		if name == "-" {

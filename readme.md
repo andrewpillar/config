@@ -5,6 +5,7 @@
   * [Error handling](#error-handling)
   * [Environment variables](#environment-variables)
   * [Includes](#includes)
+* [Struct tags](#struct-tags)
 * [Syntax](#syntax)
   * [Comments](#comments)
   * [String](#string)
@@ -134,6 +135,47 @@ for the file(s) to include,
         "database.conf",
         "smtp.conf",
     ]
+
+## Struct tags
+
+The `config` struct tag can be used to configure how the parameter names map
+to a struct field, for example,
+
+    type Config struct {
+        Addr string `config:"listen_address"`
+    }
+
+The struct tag also supports marking parameters in the configuration file as
+being deprecated. For example, assume you have an `ssl` configuration block,
+and you want to mark this parameter as deprecated in favour of `tls`, then
+you would use the `deprecated` option,
+
+    type TLSConfig struct {
+        CA   string
+        Cert string
+        Key  string
+    }
+
+    type Config struct {
+        TLS TLSConfig
+        SSL TLSConfig `config:"ssl,deprecated"`
+    }
+
+during decoding, the `deprecated` option will be used to emit an error to the
+error handle denoting this deprecation,
+
+    server.conf - ssl is deprecated
+
+the field that will replace the deprecated field can be specified like so,
+
+    type Config struct {
+        TLS TLSConfig
+        SSL TLSConfig `config:"ssl,deprecated:tls"`
+    }
+
+this will modify the error emitted,
+
+    server.conf - ssl is deprecated use tls instead
 
 ## Syntax
 

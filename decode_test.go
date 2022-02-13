@@ -269,3 +269,29 @@ func Test_DecodeEnvVars(t *testing.T) {
 		t.Fatalf("unexpected Database.Password, expected=%q, got=%q\n", "secret", cfg.Database.Password)
 	}
 }
+
+func Test_DecodeDeprecated(t *testing.T) {
+	var cfg struct {
+		TLS struct {
+			CA string
+		}
+
+		SSL struct {
+			CA string
+		} `config:",deprecated:tls"`
+	}
+
+	errs := make([]string, 0, 1)
+
+	errh := func(pos Pos, msg string) {
+		errs = append(errs, msg)
+	}
+
+	if err := DecodeFile(&cfg, filepath.Join("testdata", "deprecated.conf"), ErrorHandler(errh)); err != nil {
+		t.Fatalf("expected decode to fail, it did not")
+	}
+
+	if errs[0] != "SSL is deprecated use tls instead" {
+		t.Fatalf("could not find deprecated message")
+	}
+}
