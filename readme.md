@@ -314,7 +314,8 @@ A label can be used to distinguish between parameters of the same name. This
 can be useful when you have similar configuration parameters that you want to
 distinguish between. A labelled parameter is decoded into a map, where the
 key of the map is a string, the label itself, and the value of the map is
-the type for the parameter.
+the type for the parameter. This is not the case if the `nogroup` parameter is
+specified, in which case the label itself will be mapped to a field in a struct.
 
     auth ldap {
         addr "ldap://example.com"
