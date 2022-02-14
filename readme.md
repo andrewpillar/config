@@ -73,7 +73,7 @@ The above file would then be decoded like so in your Go program,
             }
         }
 
-        Log map[string] struct {
+        Log struct {
             Level string
             File  string
        }
