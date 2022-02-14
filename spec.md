@@ -19,7 +19,7 @@ The full spec of the language is below in Extended Backus-Naur Form,
     duration_literal = number_literal { number_literal | duration_unit } .
 
     size_unit    = "B" | "KB" | "MB" | "GB" | "TB" .
-    size_literal = number_literal size_unit .
+    size_literal = int_literal size_unit .
 
     string_literal = `"` { letter } `"` .
 
