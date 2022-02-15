@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func Test_DecodeFileSimpleConfig(t *testing.T) {
+func Test_DecodeSimpleConfig(t *testing.T) {
 	var cfg struct {
 		Log map[string]string
 
@@ -42,7 +42,7 @@ func Test_DecodeFileSimpleConfig(t *testing.T) {
 	}
 }
 
-func Test_DecodeFileArrays(t *testing.T) {
+func Test_DecodeArrays(t *testing.T) {
 	type Block struct {
 		String string
 	}
@@ -143,7 +143,7 @@ func Test_DecodeNoGroupLabel(t *testing.T) {
 	t.Log(cfg.Driver)
 }
 
-func Test_DecodeFileLabel(t *testing.T) {
+func Test_DecodeLabel(t *testing.T) {
 	type TLS struct {
 		CA string
 	}
@@ -158,6 +158,11 @@ func Test_DecodeFileLabel(t *testing.T) {
 		Auth map[string]Auth
 
 		Ports map[string][]string
+
+		Provider map[string]struct {
+			ClientID     string `config:"client_id"`
+			ClientSecret string `config:"client_secret"`
+		}
 	}
 
 	if err := DecodeFile(&cfg, filepath.Join("testdata", "label.conf"), ErrorHandler(errh(t))); err != nil {
@@ -213,9 +218,17 @@ func Test_DecodeFileLabel(t *testing.T) {
 			}
 		}
 	}
+
+	expectedProviders := []string{"github", "gitlab"}
+
+	for _, name := range expectedProviders {
+		if _, ok := cfg.Provider[name]; !ok {
+			t.Fatalf("expected provider %q in map\n", name)
+		}
+	}
 }
 
-func Test_DecodeFileUTF8(t *testing.T) {
+func Test_DecodeUTF8(t *testing.T) {
 	var cfg struct {
 		Block map[string]struct {
 			Strings []string
@@ -243,7 +256,7 @@ func Test_DecodeFileUTF8(t *testing.T) {
 	}
 }
 
-func Test_DecodeFileDuration(t *testing.T) {
+func Test_DecodeDuration(t *testing.T) {
 	var cfg struct {
 		Hour            time.Duration
 		HourHalf        time.Duration `config:"hour_half"`

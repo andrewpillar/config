@@ -556,6 +556,7 @@ func (d *Decoder) doDecode(rv reflect.Value, p *param) error {
 	}
 
 	if p.Label != nil {
+		println("label =", p.Label.Value, pv.Kind().String())
 		f.val.SetMapIndex(reflect.ValueOf(p.Label.Value), pv)
 		return nil
 	}
