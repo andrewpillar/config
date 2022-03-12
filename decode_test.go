@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -332,10 +333,38 @@ func Test_DecodeDeprecated(t *testing.T) {
 	}
 
 	if err := DecodeFile(&cfg, filepath.Join("testdata", "deprecated.conf"), ErrorHandler(errh)); err != nil {
-		t.Fatalf("expected decode to fail, it did not")
+		t.Fatal(err)
 	}
 
 	if errs[0] != "ssl is deprecated use tls instead" {
 		t.Fatalf("could not find deprecated message")
+	}
+}
+
+func Test_DecodeMap(t *testing.T) {
+	type labelCfg struct {
+		Labels map[string]map[string][]string
+	}
+
+	var cfg labelCfg
+
+	if err := DecodeFile(&cfg, filepath.Join("testdata", "map.conf"), ErrorHandler(errh(t))); err != nil {
+		t.Fatal(err)
+	}
+
+	expected := labelCfg{
+		Labels: map[string]map[string][]string{
+			"qemu": map[string][]string{
+				"arch": {"x86_64", "aarch64"},
+				"os": {"debian", "alpine"},
+			},
+			"docker": map[string][]string{
+				"programming": {"go", "js", "python"},
+			},
+		},
+	}
+
+	if !reflect.DeepEqual(cfg, expected) {
+		t.Fatalf("decoded configuration does not match\n\texpected =%v\n\tgot = %v\n", expected, cfg)
 	}
 }

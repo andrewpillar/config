@@ -198,16 +198,55 @@ func (d *Decoder) decodeLiteral(rt reflect.Type, lit *lit) (reflect.Value, error
 	return rv, nil
 }
 
-func (d *Decoder) decodeBlock(rt reflect.Type, block *block) (reflect.Value, error) {
+func (d *Decoder) decodeBlock(rt reflect.Type, b *block) (reflect.Value, error) {
 	var rv reflect.Value
 
-	if kind := rt.Kind(); kind != reflect.Struct {
-		return rv, block.Err("cannot use struct as " + kind.String())
+	kind := rt.Kind()
+
+	if kind != reflect.Struct && kind != reflect.Map {
+		return rv, errors.New("can only decode block into struct or map")
+	}
+
+	if kind == reflect.Map {
+		rv = reflect.MakeMap(rt)
+
+		if rt.Key().Kind() != reflect.String {
+			return rv, errors.New("cannot decode into non-string key")
+		}
+
+		el := rt.Elem()
+
+		var (
+			pv  reflect.Value
+			err error
+		)
+
+		for _, p := range b.Params {
+			switch v := p.Value.(type) {
+			case *lit:
+				pv, err = d.decodeLiteral(el, v)
+
+				if err != nil {
+					return rv, err
+				}
+				pv = pv.Convert(el)
+			case *block:
+				pv, err = d.decodeBlock(el, v)
+			case *array:
+				pv, err = d.decodeArray(el, v)
+			}
+
+			if err != nil {
+				return rv, err
+			}
+			rv.SetMapIndex(reflect.ValueOf(p.Name.Value), pv)
+		}
+		return rv, nil
 	}
 
 	rv = reflect.New(rt).Elem()
 
-	for _, p := range block.Params {
+	for _, p := range b.Params {
 		if err := d.doDecode(rv, p); err != nil {
 			return rv, err
 		}
