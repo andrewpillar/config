@@ -169,7 +169,7 @@ func (d *Decoder) decodeLiteral(rt reflect.Type, lit *lit) (reflect.Value, error
 		rv = reflect.ValueOf(dur)
 	case SizeLit:
 		if kind := rt.Kind(); kind != reflect.Int64 {
-			return rv, lit.Err("cannot use duration as " + kind.String())
+			return rv, lit.Err("cannot use size as " + kind.String())
 		}
 
 		end := len(lit.Value) - 1
