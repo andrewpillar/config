@@ -329,6 +329,14 @@ var Stderrh = func(pos Pos, msg string) {
 // Option is a callback that is used to modify the behaviour of a Decoder.
 type Option func(d *Decoder) *Decoder
 
+// DefaultOptions is a slice of all the options that can be used when modifying
+// the behaviour of a Decoder.
+var DefaultOptions = []Option{
+	Includes,
+	Envvars,
+	ErrorHandler(Stderrh),
+}
+
 // Includes enables the inclusion of additional configuration files via the
 // include keyword. The value for an include must be either a string literal,
 // or an array of string literals.
