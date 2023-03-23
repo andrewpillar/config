@@ -46,7 +46,7 @@ var (
 	}
 )
 
-func (d *Decoder) interpolate(s string) reflect.Value {
+func (d *Decoder) interpolate(s string) (reflect.Value, error) {
 	end := len(s) - 1
 
 	interpolate := false
@@ -70,7 +70,7 @@ func (d *Decoder) interpolate(s string) reflect.Value {
 			continue
 		}
 
-		if r == '$' && d.envvars {
+		if r == '$' && len(d.expands) > 0 {
 			if i <= end && s[i] == '{' {
 				interpolate = true
 				i++
@@ -79,11 +79,29 @@ func (d *Decoder) interpolate(s string) reflect.Value {
 		}
 
 		if r == '}' && interpolate {
+			sexpr := string(expr)
+			expand := expandEnvvar
+
+			if i := strings.Index(sexpr, ":"); i > 0 {
+				fn, ok := d.expands[sexpr[:i]]
+
+				if !ok {
+					return reflect.ValueOf(nil), errors.New("undefined variable expansion: " + sexpr[:i])
+				}
+
+				sexpr = sexpr[i+1:]
+				expand = fn
+			}
+
 			interpolate = false
 
-			env := os.Getenv(string(expr))
+			s, err := expand(sexpr)
 
-			val = append(val, []rune(env)...)
+			if err != nil {
+				return reflect.ValueOf(nil), err
+			}
+
+			val = append(val, []rune(s)...)
 			continue
 		}
 
@@ -93,7 +111,7 @@ func (d *Decoder) interpolate(s string) reflect.Value {
 		}
 		val = append(val, r)
 	}
-	return reflect.ValueOf(string(val))
+	return reflect.ValueOf(string(val)), nil
 }
 
 func (d *Decoder) decodeLiteral(rt reflect.Type, lit *lit) (reflect.Value, error) {
@@ -104,7 +122,12 @@ func (d *Decoder) decodeLiteral(rt reflect.Type, lit *lit) (reflect.Value, error
 		if kind := rt.Kind(); kind != reflect.String {
 			return rv, lit.Err("cannot use string as " + kind.String())
 		}
-		rv = d.interpolate(lit.Value)
+		v, err := d.interpolate(lit.Value)
+
+		if err != nil {
+			return rv, lit.Err(err.Error())
+		}
+		rv = v
 	case IntLit:
 		var bitSize int
 
@@ -345,11 +368,14 @@ func Includes(d *Decoder) *Decoder {
 	return d
 }
 
+func expandEnvvar(key string) (string, error) {
+	return os.Getenv(key), nil
+}
+
 // Envvars enables the expansion of environment variables in configuration.
 // Environment variables are specified like so ${VARIABLE}.
 func Envvars(d *Decoder) *Decoder {
-	d.envvars = true
-	return d
+	return Expand("env", expandEnvvar)(d)
 }
 
 // ErrorHandler configures the error handler used during parsing of a
@@ -361,13 +387,27 @@ func ErrorHandler(errh func(Pos, string)) Option {
 	}
 }
 
+type ExpandFunc func(key string) (string, error)
+
+// Expand registers an expansion mechanism for expanding a variable in a
+// string value for the given prefix, for example ${env:PASSWORD}.
+func Expand(prefix string, fn ExpandFunc) Option {
+	return func(d *Decoder) *Decoder {
+		if d.expands == nil {
+			d.expands = make(map[string]ExpandFunc)
+		}
+		d.expands[prefix] = fn
+		return d
+	}
+}
+
 type Decoder struct {
 	fields *fields
 
 	name string
 
 	includes bool
-	envvars  bool
+	expands  map[string]ExpandFunc
 	errh     func(Pos, string)
 }
 

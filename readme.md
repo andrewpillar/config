@@ -4,6 +4,7 @@
 * [Options](#options)
   * [Error handling](#error-handling)
   * [Environment variables](#environment-variables)
+  * [Custom variable expansion](#custom-variable-expansion)
   * [Includes](#includes)
 * [Struct tags](#struct-tags)
 * [Syntax](#syntax)
@@ -117,6 +118,31 @@ expand any `${VARIABLE}` that is found in a string literal in the configuration
 file into the respective environment variable.
 
     config.DecodeFile(&cfg, "file.conf", config.Envvars)
+
+Environment variables can also be referenced with the `env` prefix, should you
+refer more explicitness in your configuration files,
+
+    password "${env:PASSWORD}"
+
+### Custom variable expansion
+
+As previously demonstrated, by default any `${VARIABLE}` that is found in a
+string literal will be expanded into the resective environment variable. Custom
+variable expansion can be implemented via the `Expand` option, whereby you
+register an expansion function against a prefix, for example,
+
+    expandSecret := func(key string) (string, error) {
+        // Assume we have some kind of secret store, Vault, a keystore of some
+        // kind, etc.
+        return secretStore.Get(key)
+    }
+
+    config.DecodeFile(&cfg, "file.confg", config.Expand("secret", expandSecret))
+
+in the configuration file we can then use the prefix of `secret` to tell the
+decoder from where the variable should be taken for expansion,
+
+    password "${secret:PASSWORD}"
 
 ### Includes
 

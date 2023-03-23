@@ -295,23 +295,42 @@ func Test_DecodeEnvVars(t *testing.T) {
 	var cfg struct {
 		Database struct {
 			Addr     string
+			Username string
 			Password string
+
+			TLS struct {
+				KeyPassword string
+			}
 		}
 	}
 
+	os.Setenv("DB_USERNAME", "admin")
 	os.Setenv("DB_PASSWORD", "secret")
 
 	opts := []Option{
 		ErrorHandler(errh(t)),
 		Envvars,
+		Expand("vault", func(key string) (string, error) {
+			m := map[string]string{
+				"/secrets/ssl/TLS_KEY_PASSWORD": "terces",
+			}
+
+			return m[key], nil
+		}),
 	}
 
 	if err := DecodeFile(&cfg, filepath.Join("testdata", "envvars.conf"), opts...); err != nil {
 		t.Fatal(err)
 	}
 
+	if cfg.Database.Username != "admin" {
+		t.Fatalf("unexpected Database.Username, expected=%q, got=%q\n", "admin", cfg.Database.Username)
+	}
 	if cfg.Database.Password != "secret" {
 		t.Fatalf("unexpected Database.Password, expected=%q, got=%q\n", "secret", cfg.Database.Password)
+	}
+	if cfg.Database.TLS.KeyPassword != "terces" {
+		t.Fatalf("unexpected Database.TLS.Keypassword, expected=%q, got=%q\n", "terces", cfg.Database.Password)
 	}
 }
 
@@ -354,11 +373,11 @@ func Test_DecodeMap(t *testing.T) {
 
 	expected := labelCfg{
 		Labels: map[string]map[string][]string{
-			"qemu": map[string][]string{
+			"qemu": {
 				"arch": {"x86_64", "aarch64"},
-				"os": {"debian", "alpine"},
+				"os":   {"debian", "alpine"},
 			},
-			"docker": map[string][]string{
+			"docker": {
 				"programming": {"go", "js", "python"},
 			},
 		},
